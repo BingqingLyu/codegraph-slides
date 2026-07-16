@@ -197,7 +197,7 @@
   </table>
   <ul style="margin-top: 0.8em;">
     <li>全量重新跑 Leiden → 旧 2,438 vs 新 2,553</li>
-    <li><span class="warn">community ID 会漂移</span>，无法直观 diff 两个 35K 行 JSON</li>
+    <li><span class="warn">community ID 会漂移</span>，无法直观 diff 两个 3K 行 JSON</li>
     <li>只能<span class="warn">全量重新 LLM labeling</span> → 所有概念组重新命名</li>
   </ul>
   <p class="dim small" style="margin-top: 1em;">有图算法确定概念边界，但缺少增量能力，更新成本仍是 O(K) 全量。</p>
@@ -258,7 +258,6 @@ ORDER BY node.id;</code></pre>
         <li>统计每个概念组的新增成员数、旧成员存活数</li>
         <li>据此判定：<span class="tag tag-green">stable</span> <span class="tag tag-blue">changed</span> <span class="tag tag-warn">new</span> <span class="tag tag-warn">dissolved</span></li>
       </ul>
-      <p style="margin-top: 0.8em;">不是 LLM "猜"哪些页面受影响，<br>而是<span class="green">用查询语言精确计算</span>。</p>
     </div>
     <div style="flex: 1;">
       <pre style="font-size: 0.45em; margin: 0;"><code>-- group by 社区，计算变更统计
