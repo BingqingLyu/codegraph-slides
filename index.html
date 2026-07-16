@@ -127,8 +127,8 @@
   </table>
   <p style="margin-top: 1em;"><span class="warn">但：</span>哪些 wiki 页面受影响？靠 LLM 猜</p>
   <ul>
-    <li>LLM 只读 47 个变更文件，<span class="warn">不知道引用关系</span>会影响哪些已有 wiki 页面</li>
-    <li>已有模块的 wiki 没更新，说的还是旧信息 → <span class="warn">知识腐化</span></li>
+    <li>LLM 只读 47 个变更文件，<span class="warn">不确定新增的信息间接影响</span>哪些 wiki 页面</li>
+    <li>已有模块的 wiki 的内容过期了，说的还是旧信息 → <span class="warn">知识腐化</span></li>
   </ul>
 </section>
 
@@ -170,8 +170,8 @@
   </table>
   <div style="margin-top: 1em;">
     <p><span class="green">LLM 只需理解 2,553 个概念组</span></p>
-    <p class="dim small">不用读 1,642 个源文件</p>
-    <p style="margin-top: 0.8em;">tokens 从 <span class="warn">O(N)</span> 降到 <span class="green">O(K)</span></p>
+    <p class="dim small">不用读 1,642 个源文件，还要靠自己给他们做概念分类</p>
+    <p style="margin-top: 0.8em;">tokens 从 <span class="warn">O(N)</span> （N是指原来 1,642 个源文件里所有的内容）降到 <span class="green">O(K)</span></p>（K是 2,553 个概念组）
   </div>
 </section>
 
@@ -183,8 +183,7 @@
   <p style="margin-top: 1em;">如果全量重建图 + 全量重新归组：</p>
   <ul>
     <li><span class="warn">重建成本</span>吃掉了结构优势</li>
-    <li>重新归组的结果<span class="warn">不稳定</span>，概念编号会漂移</li>
-    <li>和 LLM-wiki 里 LLM 判断漂移是<span class="warn">同一个问题</span>，只是换了一层</li>
+    <li>重新归组的结果<span class="warn">不稳定</span>，概念编号会漂移，出现大量假阳结果</li>
   </ul>
 </section>
 
