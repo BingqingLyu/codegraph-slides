@@ -352,9 +352,9 @@ Cypher group by → 2,413 stable / 21 changed / 119 new / 4 dissolved
     </thead>
     <tbody>
       <tr><td class="accent">概念边界</td><td>LLM 判断</td><td>图算法确定</td><td class="green">算法 + 增量稳定</td></tr>
-      <tr><td class="accent">变更检测</td><td>LLM 读文本猜</td><td>全量重建</td><td class="green">Cypher 精确计算</td></tr>
+      <tr><td class="accent">变更检测</td><td>LLM 读增量文本判断</td><td>全量重建</td><td class="green">Cypher 精确计算</td></tr>
       <tr><td class="accent">更新成本</td><td>每次 ingest 扫描</td><td>O(K) 全量</td><td class="green">O(ΔK) 只处理变化</td></tr>
-      <tr><td class="accent">概念稳定性</td><td>可能漂移</td><td>编号变</td><td class="green">freeze-assign 不变</td></tr>
+      <tr><td class="accent">概念稳定性</td><td>可能漂移</td><td>编号变导致漂移</td><td class="green">freeze-assign 不变</td></tr>
       <tr><td class="accent">计算安全性</td><td>—</td><td>—</td><td class="green">临时图隔离</td></tr>
     </tbody>
   </table>
