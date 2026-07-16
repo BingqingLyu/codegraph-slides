@@ -363,15 +363,25 @@ Cypher group by → 2,413 stable / 21 changed / 119 new / 4 dissolved
 
 <!-- 17. Closing -->
 <section>
-  <h2>不是替代，而是加一层</h2>
-  <p style="font-size: 1.1em; margin-top: 1em;">
-    在 LLM-wiki 之上加一层<span class="accent">结构化的增量能力</span>
-  </p>
-  <ul style="margin-top: 1em;">
-    <li>用<span class="accent">图</span>提供概念依据</li>
-    <li>用<span class="green">增量算法</span>保证更新又快又准</li>
-    <li>用 <span class="warn">Cypher</span> 把变更检测从"猜"变成"算"</li>
-  </ul>
+  <h2>不是替代，而是各司其职</h2>
+  <div style="display: flex; gap: 3em; margin-top: 1.5em;">
+    <div style="flex: 1; text-align: left;">
+      <h3 class="accent">图：结构化部分</h3>
+      <ul>
+        <li>图算法确定<span class="accent">概念边界</span></li>
+        <li>Cypher 查询精确<span class="accent">计算变更</span></li>
+        <li>增量算法保证<span class="accent">更新又快又稳</span></li>
+      </ul>
+    </div>
+    <div style="flex: 1; text-align: left;">
+      <h3 class="green">大模型：语义部分</h3>
+      <ul>
+        <li>理解概念组，生成<span class="green"> wiki 文章</span></li>
+        <li>给概念组<span class="green">命名、归纳</span></li>
+        <li>负责<span class="green">表达</span>，不负责决定结构</li>
+      </ul>
+    </div>
+  </div>
   <p class="dim small" style="margin-top: 2em;">graphify · neug · wiki</p>
 </section>
 
