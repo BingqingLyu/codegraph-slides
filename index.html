@@ -328,18 +328,33 @@ CALL drop_projected_graph('g2');</code></pre>
 <section>
   <span class="section-number">05 / 示例</span>
   <h2>端到端流程</h2>
-  <pre style="font-size: 0.55em;"><code>
-NeuG release v0.1.2 (基线) → 全量构建图 + Leiden + 生成 wiki
-      ↓
-NeuG release v0.1.3 (增量) → 只提取 47 个变更文件
-      ↓
-freeze-assign Leiden → 旧节点冻结，只分配新节点
-      ↓
-Cypher group by → 2,413 stable / 21 changed / 119 new / 4 dissolved
-      ↓
-增量 wiki → 只有 144 个概念组需要 LLM 更新
-  </code></pre>
-  <p class="dim small" style="margin-top: 1em;">代码 Repo 是 POC 的一个场景。<br>任何"有结构、会变化的内容源"都适用。</p>
+  <div style="display: flex; gap: 2em; align-items: flex-start;">
+    <div style="flex: 1;">
+      <p class="accent"><b>初次构建（全量）</b></p>
+      <pre style="font-size: 0.45em; margin: 0;"><code>原始内容
+  ↓
+neug 全量 Leiden 聚类
+  ↓
+2,553 个概念组
+  ↓
+LLM 理解 + 命名
+  ↓
+生成完整 wiki</code></pre>
+    </div>
+    <div style="flex: 1;">
+      <p class="green"><b>增量更新</b></p>
+      <pre style="font-size: 0.45em; margin: 0;"><code>增量内容（47 文件）
+  ↓
+neug freeze-assign + Cypher
+  ↓
+21 changed / 119 new / 4 dissolved
+  ↓
+LLM 只处理 144 个变化的概念组
+  ↓
+更新 wiki 的变化部分</code></pre>
+    </div>
+  </div>
+  <p class="dim small" style="margin-top: 1em;">代码 Repo 是 POC 的一个场景。任何"有结构、会变化的内容源"都适用。</p>
 </section>
 
 <!-- 16. Summary table -->
