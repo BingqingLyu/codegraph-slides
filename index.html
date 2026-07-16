@@ -1,760 +1,395 @@
-<!doctype html>
+<!DOCTYPE html>
 <html lang="zh-CN">
 <head>
-    <meta charset="utf-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>CodeGraph 项目规划</title>
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/reveal.js/4.6.0/reveal.min.css">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/reveal.js/4.6.0/theme/white.min.css">
-    <style>
-        .reveal h1, .reveal h2, .reveal h3 {
-            text-transform: none;
-            color: #333;
-        }
-        .reveal .slides section {
-            text-align: left;
-        }
-        .reveal .slides section h1 {
-            text-align: center;
-        }
-        .reveal table {
-            font-size: 0.6em;
-        }
-        .reveal pre {
-            font-size: 0.5em;
-            background: #f5f5f5;
-            border: 1px solid #ddd;
-        }
-        .reveal code {
-            font-size: 0.8em;
-            background: #f5f5f5;
-            color: #333;
-        }
-        .reveal p, .reveal li {
-            color: #333;
-        }
-    </style>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+<title>基于图的增量 wiki</title>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/reveal.js@5.1.0/dist/reset.css">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/reveal.js@5.1.0/dist/reveal.css">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/reveal.js@5.1.0/dist/theme/white.css">
+<style>
+  :root {
+    --accent: #0969da;
+    --accent2: #1a7f37;
+    --warn: #d1242f;
+    --dim: #6e7781;
+    --bg: #ffffff;
+    --code-bg: #f6f8fa;
+  }
+  .reveal { font-family: -apple-system, "Helvetica Neue", "PingFang SC", "Microsoft YaHei", sans-serif; color: #24292f; }
+  .reveal h1, .reveal h2, .reveal h3 { text-transform: none; font-weight: 700; color: #24292f; }
+  .reveal h1 { font-size: 2.2em; }
+  .reveal h2 { font-size: 1.6em; color: var(--accent); }
+  .reveal h3 { font-size: 1.2em; color: var(--accent2); }
+  .reveal p, .reveal li { font-size: 0.85em; line-height: 1.6; color: #24292f; }
+  .reveal code { color: var(--accent2); background: rgba(26,127,55,.08); padding: 1px 6px; border-radius: 4px; font-size: 0.9em; }
+  .reveal pre { width: 100%; font-size: 0.65em; line-height: 1.5; }
+  .reveal pre code { background: var(--code-bg); color: #24292f; }
+  .reveal table { font-size: 0.6em; margin: auto; border-collapse: collapse; }
+  .reveal table th { color: var(--accent); border-bottom: 2px solid var(--accent); padding: 8px 14px; }
+  .reveal table td { border-bottom: 1px solid rgba(110,112,129,.2); padding: 6px 14px; }
+  .reveal .accent { color: var(--accent); }
+  .reveal .green { color: var(--accent2); }
+  .reveal .warn { color: var(--warn); }
+  .reveal .dim { color: var(--dim); }
+  .reveal .small { font-size: 0.7em; }
+  .reveal .tag { display: inline-block; padding: 2px 10px; border-radius: 12px; font-size: 0.65em; margin: 2px; }
+  .reveal .tag-blue { background: rgba(9,105,218,.1); color: var(--accent); }
+  .reveal .tag-green { background: rgba(26,127,55,.1); color: var(--accent2); }
+  .reveal .tag-warn { background: rgba(188,76,0,.1); color: var(--warn); }
+  .reveal .flow-box { display: inline-block; padding: 10px 16px; border: 1px solid rgba(9,105,218,.25); border-radius: 8px; margin: 4px; font-size: 0.75em; background: #f6f8fa; }
+  .reveal .flow-arrow { color: var(--dim); font-size: 0.8em; }
+  .reveal .section-number { color: var(--dim); font-size: 0.5em; display: block; margin-bottom: 0.3em; }
+  .reveal .title-sub { color: var(--dim); font-size: 0.5em; margin-top: 0.5em; }
+  .reveal ul { list-style: none; padding-left: 0; }
+  .reveal ul li { margin-bottom: 0.5em; }
+  .reveal ul li::before { content: "—"; color: var(--dim); margin-right: 0.5em; }
+</style>
 </head>
 <body>
-    <div class="reveal">
-        <div class="slides">
-            <!-- Slide 1: Title -->
-            <section>
-                <h1>CodeGraph</h1>
-                <h3>基于 NeuG/zvec 的代码分析工具</h3>
-                <p>作为大模型的"结构信息预处理器"和"代码洞察引擎"</p>
-                <p style="font-size: 0.6em; margin-top: 50px;">2026-04</p>
-            </section>
+<div class="reveal"><div class="slides">
 
-            <!-- Slide 1b: Problem Background -->
-            <section>
-                <h2>日常开发中的常见场景</h2>
-                <div style="margin: 10px 0;">
-                    <div style="margin: 6px 0; padding: 6px 12px; background: rgba(33, 150, 243, 0.1); border-left: 3px solid #2196F3; border-radius: 3px;">
-                        <h4 style="margin: 0 0 2px 0; color: #2196F3; font-size: 0.8em;">场景 1：代码审查</h4>
-                        <p style="margin: 0; font-size: 0.65em;">在大型项目中，面对上百个待合入的 PR，从哪里开始 review？如何确定优先级和合入顺序？</p>
-                    </div>
-                    <div style="margin: 6px 0; padding: 6px 12px; background: rgba(255, 152, 0, 0.1); border-left: 3px solid #FF9800; border-radius: 3px;">
-                        <h4 style="margin: 0 0 2px 0; color: #FF9800; font-size: 0.8em;">场景 2：影响面评估</h4>
-                        <p style="margin: 0; font-size: 0.65em;">修改一个函数后，如何快速知道会影响哪些函数或模块？</p>
-                    </div>
-                    <div style="margin: 6px 0; padding: 6px 12px; background: rgba(76, 175, 80, 0.1); border-left: 3px solid #4CAF50; border-radius: 3px;">
-                        <h4 style="margin: 0 0 2px 0; color: #4CAF50; font-size: 0.8em;">场景 3：快速理解项目</h4>
-                        <p style="margin: 0; font-size: 0.65em;">接手一个新项目，如何快速了解整体架构和关键模块？</p>
-                    </div>
-                    <div style="margin: 6px 0; padding: 6px 12px; background: rgba(156, 39, 176, 0.1); border-left: 3px solid #9C27B0; border-radius: 3px;">
-                        <h4 style="margin: 0 0 2px 0; color: #9C27B0; font-size: 0.8em;">场景 4：Bug 根因定位</h4>
-                        <p style="margin: 0; font-size: 0.65em;">收到一个 GitHub issue，如何从模糊描述快速定位到代码里的根因函数？</p>
-                    </div>
-                </div>
-                <p style="font-size: 0.7em; color: #666; margin-top: 12px; text-align: center;">
-                    传统方式：人工阅读代码 → 耗时耗力，容易遗漏<br>
-                    大模型方式：发送大量代码 → <strong style="color: #F44336;">Token 成本极高</strong>
-                </p>
-            </section>
+<!-- 1. Title -->
+<section>
+  <h1>基于图的增量 wiki</h1>
+  <p class="title-sub">用图算法提供概念依据，用增量引擎保证更新又快又准</p>
+  <p class="dim small" style="margin-top: 2em;">graphify · neug · wiki</p>
+</section>
 
-            <!-- Slide 2: Project Positioning -->
-            <section>
-                <h2>为什么需要 CodeGraph？</h2>
-                <p><strong>核心理念</strong>：用图分析缩小代码范围，用结构信息提供全局视角，用模式检测发现隐藏问题。</p>
-                <ul>
-                    <li>大模型直接分析代码的成本高</li>
-                    <li>大模型缺乏全局视角，容易被细节淹没</li>
-                </ul>
-            </section>
+<!-- 2. Background: LLM-wiki pattern -->
+<section>
+  <span class="section-number">01 / 背景</span>
+  <h2>LLM-wiki pattern</h2>
+  <p class="dim">Andrej Karpathy 提出的一种用 LLM 持续维护知识库的模式</p>
+  <ul>
+    <li>不只是提问时检索（RAG），而是<span class="green">持续维护</span>一个结构化 wiki</li>
+    <li><span class="warn">首次构建</span>需要 LLM 全量读取原始内容，消耗大量 tokens</li>
+    <li>之后每次加入新内容，<span class="accent">增量更新</span>受影响的页面</li>
+    <li>维护交叉引用、更新摘要、标注矛盾——bookkeeping 由 LLM 完成</li>
+  </ul>
+  <p class="dim small" style="margin-top: 1em;">知识是"编译一次、持续更新"的。在个人知识库场景下，规模小，这套流程够用。</p>
+</section>
 
-            <!-- Slide 2b: Key Advantage - Token Savings -->
-            <section>
-                <h2>核心优势：Token 消耗对比</h2>
-                
-                <div style="display: flex; justify-content: center; gap: 40px; margin: 20px 0;">
-                    <div style="text-align: center; padding: 30px; background: rgba(76, 175, 80, 0.1); border-radius: 8px; min-width: 250px;">
-                        <h3 style="color: #4CAF50; margin: 0 0 20px 0;">CodeGraph</h3>
-                        <div style="font-size: 2.8em; font-weight: bold; color: #4CAF50;">50,000</div>
-                        <div style="font-size: 1.2em; color: #666; margin-top: 10px;">tokens</div>
-                        <p style="font-size: 0.7em; color: #999; margin-top: 15px;">纯图分析，无需发送代码</p>
-                    </div>
-                    <div style="text-align: center; padding: 30px; background: rgba(244, 67, 54, 0.1); border-radius: 8px; min-width: 250px;">
-                        <h3 style="color: #F44336; margin: 0 0 20px 0;">纯 LLM</h3>
-                        <div style="font-size: 2.8em; font-weight: bold; color: #F44336;">1,200,000</div>
-                        <div style="font-size: 1.2em; color: #666; margin-top: 10px;">tokens</div>
-                        <p style="font-size: 0.7em; color: #999; margin-top: 15px;">代码审查场景实测数据</p>
-                    </div>
-                </div>
-                
-                <div style="padding: 20px; background: rgba(255, 152, 0, 0.1); border-left: 4px solid #FF9800; border-radius: 4px; margin-top: 20px;">
-                    <p style="font-size: 0.9em; margin: 0; text-align: center;">
-                        <strong>节省 ~96% tokens</strong>: 一次索引，多次查询，零重复成本
-                    </p>
-                </div>
-            </section>
+<!-- 4. Problem: scale -->
+<section>
+  <span class="section-number">02 / 问题</span>
+  <h2>规模变大后，结构性问题浮现</h2>
+  <p>当内容源变大、变复杂——代码仓库几百个文件，企业知识库上千篇文档——</p>
+  <p>核心问题是：<span class="warn">谁来决定"概念边界"？</span></p>
+  <p class="dim">LLM 读了内容，自己决定怎么组织页面。这个判断完全依赖 LLM 的主观理解。</p>
+</section>
 
-            <!-- Slide 3: Problem 1 -->
-            <section>
-                <h2>问题 1：大模型分析代码成本高</h2>
-                <ul>
-                    <li>当前主流大模型按 token 收费</li>
-                    <li>直接将大型代码库发送给大模型会消耗大量token</li>
-                </ul>
-                <pre><code>传统方式：代码 → 大模型 → 答案（每次发送大量代码）</code></pre>
-                <p style="font-size: 0.7em; color: #F44336; margin-top: 15px;">
-                    ⚠️ 实测：一次代码审查消耗约 1,200,000 tokens
-                </p>
-            </section>
+<!-- 5. Problem 1 -->
+<section>
+  <span class="section-number">02 / 问题</span>
+  <h3 class="warn">问题一：概念归属不稳定</h3>
+  <ul>
+    <li>同一组内容，LLM 这次分成三篇，下次合成一篇</li>
+    <li>不是 LLM 能力不行，而是<span class="warn">没有结构依据</span>——在读文本，不在读"关系"</li>
+    <li>概念边界在每次 ingest 时都可能<span class="warn">漂移</span></li>
+  </ul>
+</section>
 
-            <!-- Slide 4: Token Saving -->
-            <section>
-                <h2>CodeGraph 的解决方案</h2>
-                <ul>
-                    <li><strong>一次索引，多次查询</strong>：索引完成后，每次查询只返回相关代码片段</li>
-                    <li><strong>结构化过滤</strong>：用 Cypher 查询精确提取需要的函数、调用链、依赖关系</li>
-                    <li><strong>向量预筛选</strong>：用语义相似度找到相关函数，避免全量发送</li>
-                </ul>
-                <pre><code>CodeGraph：代码 → 索引（一次性）→ 结构化查询/向量预筛选 → 精准代码片段 → 大模型（只发送相关代码）</code></pre>
-                <p style="font-size: 0.7em; color: #4CAF50; margin-top: 15px;">
-                    ✓ 实测：一次代码审查消耗约 50,000 tokens
-                </p>
-            </section>
+<!-- 6. Problem 2 -->
+<section>
+  <span class="section-number">02 / 问题</span>
+  <h3 class="warn">问题二：变更影响范围不一定准确</h3>
+  <ul>
+    <li>加了一个新源，LLM 需要判断"这会影响哪些已有 wiki 页面"</li>
+    <li>读了新源，再扫已有页面看哪些相关</li>
+    <li>这个"猜"的过程本身<span class="warn">消耗 tokens</span>，而且可能不准确</li>
+  </ul>
+</section>
 
-            <!-- Slide 5: Problem 2 -->
-            <section>
-                <h2>问题 2：大模型缺乏全局视角，容易被细节淹没</h2>
-                <ul>
-                    <li>大模型只能看到提供的代码片段，无法自动获取完整的代码库结构</li>
-                    <li>跨模块的依赖关系、循环依赖、架构违规等需要全局分析才能发现</li>
-                    <li>Git 历史分析需要完整的提交记录，大模型无法直接访问</li>
-                </ul>
-            </section>
+<!-- 7. Problem 3 -->
+<section>
+  <span class="section-number">02 / 问题</span>
+  <h3 class="warn">问题三：没有质量指标</h3>
+  <ul>
+    <li>一个概念的内聚度够不够？</li>
+    <li>两个概念之间有没有意想不到的关联？</li>
+    <li>当前概念里，最相关的文件是哪些？</li>
+  </ul>
+  <p style="margin-top: 1em;">这些在文本层面<span class="warn">看不出来</span>，需要图结构才能算。</p>
+</section>
 
-            <!-- Slide 5: Solution -->
-            <section>
-                <h2>CodeGraph 的解决方案</h2>
-                <ul>
-                    <li>构建完整的代码知识图谱（函数、调用、继承、模块、提交）</li>
-                    <li><strong>全局视角</strong>：模块依赖图、调用链、演化历史</li>
-                    <li><strong>模式检测</strong>：自动发现高耦合、循环依赖等架构问题</li>
-                    <li><strong>引导式探索</strong>：主动提示值得关注的问题</li>
-                    <li><strong>精准定位</strong>：基于图分析缩小范围，让大模型聚焦关键代码</li>
-                </ul>
-            </section>
+<!-- 7.5. Example: LLM -->
+<section>
+  <span class="section-number">02 / 示例</span>
+  <h3 class="warn">示例：LLM 直接处理 neug repo</h3>
+  <table style="font-size: 0.7em;">
+    <tr><td class="dim">项目规模</td><td>1,642 个源文件</td></tr>
+    <tr><td class="dim">增量变更</td><td>47 文件改动，+14,243 行（新增 pattern matching 模块）</td></tr>
+  </table>
+  <table style="font-size: 0.7em; margin-top: 0.5em;">
+    <tr><td class="dim">全量构建</td><td>读 1,642 个文件 → <span class="warn">百万级 tokens</span></td></tr>
+    <tr><td class="dim">增量更新</td><td>读 47 个变更文件 → tokens 少了</td></tr>
+  </table>
+  <p style="margin-top: 1em;"><span class="warn">但：</span>哪些 wiki 页面受影响？靠 LLM 猜</p>
+  <ul>
+    <li>LLM 只读 47 个变更文件，<span class="warn">不知道引用关系</span>会影响哪些已有 wiki 页面</li>
+    <li>已有模块的 wiki 没更新，说的还是旧信息 → <span class="warn">知识腐化</span></li>
+  </ul>
+</section>
 
-            <!-- Slide 6: Core Advantages -->
-            <section>
-                <h2>CodeGraph 核心优势</h2>
-                <table>
-                    <tr>
-                        <th>优势</th>
-                        <th>说明</th>
-                    </tr>
-                    <tr>
-                        <td>降低Token消耗</td>
-                        <td>索引复用、精准提取、适用架构分析/代码审查，e.g., 代码审查节省~1,200,000 tokens</td>
-                    </tr>
-                    <tr>
-                        <td>结构洞察</td>
-                        <td>图分析、演化分析、模式检测、量化指标，e.g., 发现高耦合、循环依赖等架构问题</td>
-                    </tr>
-                    <tr>
-                        <td>基于NeuG和Zvec底座，高效图查询与探索</td>
-                        <td>高效图查询、可视化，支持在图上一步步深入探索</td>
-                    </tr>
-                </table>
-            </section>
+<!-- 8. Solution: graph -->
+<section>
+  <span class="section-number">03 / 解法</span>
+  <h2>用图提供结构依据</h2>
+  <p>在 LLM 和原始内容之间加一层图</p>
+  <div style="margin: 1em 0;">
+    <span class="flow-box">原始内容</span>
+    <span class="flow-arrow">→</span>
+    <span class="flow-box" style="border-color: var(--accent2);">图数据库</span>
+    <span class="flow-arrow">→</span>
+    <span class="flow-box">概念组（图算法确定）</span>
+    <span class="flow-arrow">→</span>
+    <span class="flow-box">LLM 命名 + 写 wiki</span>
+  </div>
+  <p class="dim small">概念边界由算法确定，不依赖 LLM 主观判断——确定性、可复现、不漂移</p>
+</section>
 
-            <!-- Slide 7: Tech Features -->
-            <section>
-                <h2>CodeGraph 技术特点</h2>
-                <table>
-                    <tr>
-                        <th>特性</th>
-                        <th>说明</th>
-                    </tr>
-                    <tr>
-                        <td>部署方式</td>
-                        <td>完全本地（NeuG + zvec 都是嵌入式数据库）</td>
-                    </tr>
-                    <tr>
-                        <td>隐私保障</td>
-                        <td>代码永不离开用户机器</td>
-                    </tr>
-                    <tr>
-                        <td>使用方式</td>
-                        <td>Python API、CLI 命令行</td>
-                    </tr>
-                    <tr>
-                        <td>大模型集成</td>
-                        <td>MCP 服务器</td>
-                    </tr>
-                    <tr>
-                        <td>扩展性</td>
-                        <td>通过 BaseAdapter 接口快速添加新语言支持</td>
-                    </tr>
-                </table>
-            </section>
+<!-- 9. Graph benefits -->
+<section>
+  <span class="section-number">03 / 解法</span>
+  <h2>解法：Graphify</h2>
+  <ul>
+    <li><span class="green">概念归并用 <code>Leiden/Louvain</code> 聚类算法</span>：根据节点间实际关系计算，不是 LLM 猜的</li>
+    <li><span class="green">wiki 有质量指标</span>：内聚度、跨概念连接、枢纽节点——图结构天然给出</li>
+    <li><span class="green">LLM 只做理解和表达</span>：给它一个已确定的概念组，让它命名、写文章，而不是同时决定"怎么分"和"写什么"</li>
+  </ul>
+</section>
 
-              <!-- Slide 5b: Installation & Usage -->
-            <section>
-                <h2>安装与使用</h2>
-                <pre><code style="font-size: 0.8em;">pip install codegraph-ai</code></pre>
-                
-                <div style="display: flex; gap: 30px; margin-top: 20px;">
-                    <div style="flex: 1;">
-                        <h4 style="color: #4CAF50;">CLI - 便捷集成</h4>
-                        <pre style="font-size: 0.5em;"><code># 初始化索引
-codegraph init --repo /path/to/project
+<!-- 10.5. Example: Graphify (全量) -->
+<section>
+  <span class="section-number">04 / 示例</span>
+  <h3>示例：Graphify 全量聚类 — 优势</h3>
+  <table style="font-size: 0.7em;">
+    <tr><td class="dim">图规模</td><td>28,928 节点 · 52,501 边 · 1,642 源文件</td></tr>
+    <tr><td class="dim">全量聚类结果</td><td>2,553 个概念组</td></tr>
+  </table>
+  <div style="margin-top: 1em;">
+    <p><span class="green">LLM 只需理解 2,553 个概念组</span></p>
+    <p class="dim small">不用读 1,642 个源文件</p>
+    <p style="margin-top: 0.8em;">tokens 从 <span class="warn">O(N)</span> 降到 <span class="green">O(K)</span></p>
+  </div>
+</section>
 
-# 自然语言查询（与大模型集成）
-codegraph query "Who calls funcA?"
+<!-- 10. New problem -->
+<section>
+  <span class="section-number">04 / 新问题</span>
+  <h2>但图也要更新</h2>
+  <p>内容变了，图要跟着变，概念归组也可能变化。</p>
+  <p style="margin-top: 1em;">如果全量重建图 + 全量重新归组：</p>
+  <ul>
+    <li><span class="warn">重建成本</span>吃掉了结构优势</li>
+    <li>重新归组的结果<span class="warn">不稳定</span>，概念编号会漂移</li>
+    <li>和 LLM-wiki 里 LLM 判断漂移是<span class="warn">同一个问题</span>，只是换了一层</li>
+  </ul>
+</section>
 
-# 生成架构报告
-codegraph analyze --output report.md</code></pre>
-                        <p style="font-size: 0.6em; color: #aaa; margin-top: 10px;">
-                            ✓ 内置查询、架构报告等方法<br>
-                            ✓ 易于与大模型集成
-                        </p>
-                    </div>
-                    <div style="flex: 1;">
-                        <h4 style="color: #2196F3;">Python API - 灵活定制</h4>
-                        <pre style="font-size: 0.5em;"><code>from codegraph.core import CodeScope
-cs = CodeScope('.codegraph')
+<!-- 10.6. Example: Graphify (增量) -->
+<section>
+  <span class="section-number">04 / 示例</span>
+  <h3 class="warn">示例：Graphify 全量聚类 — 增量不足</h3>
+  <table style="font-size: 0.7em;">
+    <tr><td class="dim">增量变更</td><td>47 文件改动，+14,243 行</td></tr>
+  </table>
+  <ul style="margin-top: 0.8em;">
+    <li>全量重新跑 Leiden → 旧 2,438 vs 新 2,553</li>
+    <li><span class="warn">community ID 会漂移</span>，无法直观 diff 两个 35K 行 JSON</li>
+    <li>只能<span class="warn">全量重新 LLM labeling</span> → 所有概念组重新命名</li>
+  </ul>
+  <p class="dim small" style="margin-top: 1em;">有图算法确定概念边界，但缺少增量能力，更新成本仍是 O(K) 全量。</p>
+</section>
 
-# 使用内置方法
-hotspots = cs.hotspots(topk=10)
+<!-- 11. neug overview -->
+<section>
+  <span class="section-number">05 / 解法</span>
+  <h2>neug 提供三层增量能力</h2>
+  <div style="margin: 1em 0;">
+    <span class="tag tag-blue">freeze-assign Leiden</span>
+    <span class="tag tag-green">Cypher 变更检测</span>
+    <span class="tag tag-warn">COPY TEMP 临时图</span>
+  </div>
+  <ul>
+    <li><span class="accent">增量归组</span>：已有概念组冻结，只分配新内容</li>
+    <li><span class="green">变更检测</span>：Cypher group by 精确计算社区级变化</li>
+    <li><span class="warn">临时图计算</span>：增量分析不污染原图</li>
+  </ul>
+</section>
 
-# 或自定义 Cypher 查询
-rows = cs.query('''
-    MATCH (c:Function)-[:CALLS]->(f)
-    RETURN c.name
-''')</code></pre>
-                        <p style="font-size: 0.6em; color: #aaa; margin-top: 10px;">
-                            ✓ 调用内置分析方法<br>
-                            ✓ 自定义 Cypher 查询
-                        </p>
-                    </div>
-                </div>
-            </section>
-
-            <!-- Slide 8: Collaboration Mode -->
-            <section>
-                <h2>与大模型的协作模式</h2>
-                <pre><code>用户提问
-  ↓
-CodeGraph（图 + 向量分析）
-  - 结构查询定位相关模块
-  - 向量搜索找到相似函数
-  - 图遍历分析调用链
-  - 模式检测发现架构问题
-  - 提取精准代码片段
-  ↓
-大模型（深度理解）
-  - 输入：精准代码 + 结构信息 + 模式检测结果
-  - 输出：针对性分析报告
-  ↓
-用户获得高质量答案</code></pre>
-            </section>
-
-            <!-- Slide 8b: Use Cases Introduction -->
-            <section>
-                <h2>典型应用场景</h2>
-                <p style="font-size: 0.8em; margin: 10px 0;">
-                    CodeGraph 如何在实际工作中帮助你？
-                </p>
-                <div style="text-align: left; max-width: 800px; margin: 0 auto;">
-                    <div style="margin: 6px 0; padding: 6px 12px; background: rgba(33, 150, 243, 0.1); border-left: 3px solid #2196F3;">
-                        <h4 style="margin: 0; color: #2196F3; font-size: 0.8em;">场景 1：代码审查</h4>
-                        <p style="margin: 2px 0 0 0; font-size: 0.65em;">评估 PR 风险，优化合入顺序</p>
-                    </div>
-                    <div style="margin: 6px 0; padding: 6px 12px; background: rgba(255, 152, 0, 0.1); border-left: 3px solid #FF9800;">
-                        <h4 style="margin: 0; color: #FF9800; font-size: 0.8em;">场景 2：影响面评估</h4>
-                        <p style="margin: 2px 0 0 0; font-size: 0.65em;">聚焦关键问题，引导主动洞察</p>
-                    </div>
-                    <div style="margin: 6px 0; padding: 6px 12px; background: rgba(76, 175, 80, 0.1); border-left: 3px solid #4CAF50;">
-                        <h4 style="margin: 0; color: #4CAF50; font-size: 0.8em;">场景 3：架构分析</h4>
-                        <p style="margin: 2px 0 0 0; font-size: 0.65em;">理解代码库整体结构，识别架构问题</p>
-                    </div>
-                    <div style="margin: 6px 0; padding: 6px 12px; background: rgba(156, 39, 176, 0.1); border-left: 3px solid #9C27B0;">
-                        <h4 style="margin: 0; color: #9C27B0; font-size: 0.8em;">场景 4：Bug 根因定位</h4>
-                        <p style="margin: 2px 0 0 0; font-size: 0.65em;">Graph + Vector 协同，将 issue 描述映射到代码</p>
-                    </div>
-                </div>
-            </section>
-
-            <!-- Slide 9: Use Case 1 - Problem Introduction -->
-            <section>
-                <h3>场景 1：代码审查</h3>
-                <div style="padding: 20px; background: rgba(33, 150, 243, 0.1); border-left: 4px solid #2196F3; border-radius: 4px; margin-bottom: 30px;">
-                    <h4 style="margin: 0 0 15px 0; color: #2196F3;">用户问题</h4>
-                    <p style="font-size: 1.1em; margin: 0; font-style: italic;">
-                        "当前 100 多个 PR，怎么确定 review/合入顺序？"
-                    </p>
-                </div>
-                <div style="text-align: center; margin: 30px 0;">
-                    <img src="qwen-code-prs.png" alt="Qwen Code PRs" style="width: 80%; border-radius: 8px; box-shadow: 0 2px 8px rgba(0,0,0,0.1);">
-                </div>
-            </section>
-
-            <!-- Slide 9a: Use Case 1 - LLM Solution -->
-            <section>
-                <h3>Solution 1：纯 LLM 方案</h3>
-                <div style="padding: 15px; background: #1e1e1e; border-radius: 8px; margin-bottom: 20px;">
-                    <h4 style="margin: 0 0 10px 0; color: #4CAF50; font-size: 0.85em;">💬 对话框提问</h4>
-                    <p style="font-size: 0.9em; margin: 0; color: #e0e0e0; font-style: italic;">
-                        "帮我分析 qwen-code repo 中 100 多个 PR，怎么确定 review/合入顺序？"
-                    </p>
-                </div>
-                <div style="display: flex; gap: 20px; align-items: flex-start;">
-                    <div style="flex: 1; font-size: 0.75em;">
-                        <h4 style="color: #F44336;">LLM 输出</h4>
-                        <ul>
-                            <li>生成详细的 PR 风险评估报告</li>
-                            <li>按 HIGH/MEDIUM/LOW 分级</li>
-                            <li>识别冲突集群（Cluster A-G）</li>
-                            <li>给出合并策略建议</li>
-                        </ul>
-                        <p style="color: #F44336; margin-top: 15px; font-size: 1.1em;">
-                            <strong>⚠️ Token 消耗：<span style="font-size: 1.2em;">~500,000 tokens</span></strong>
-                        </p>
-                    </div>
-                    <div style="flex: 1; font-size: 0.65em; background: #f5f5f5; padding: 15px; border-radius: 4px; max-height: 350px; overflow-y: auto;">
-                        <pre style="margin: 0; white-space: pre-wrap; word-wrap: break-word;"># QwenLM/qwen-code PR Security Risk Assessment
-
-## Executive Summary
-| Metric | Count |
-|--------|-------|
-| Total PRs Analyzed | 117 |
-| OPEN (needs review) | 67 |
-| HIGH Risk (OPEN) | 15 |
-| MEDIUM Risk (OPEN) | 23 |
-| LOW Risk (OPEN) | 29 |
-
-## Key Findings
-- Auth & credential handling is the most security-sensitive area
-- Conflict Cluster A (OpenAI/Auth) is highest-priority
-- PR #439 (+5425/-671, 67 files) is largest OPEN PR
-- 24 stale PRs should be evaluated
-
-## Conflict Clusters
-### Cluster A: OpenAI/Auth Configuration
-Files at risk:
-- packages/cli/src/config/auth.ts
-- packages/cli/src/config/config.ts
-- PRs: #164, #294, #339
-Risk: CRITICAL — Must be reviewed together
-
-### Cluster B: Content Generator Pipeline
-PRs: #112, #404, #429, #476, #485, #492...
-Risk: HIGH — Duplicate implementations detected
-
-## Merge Strategy
-- Category 1: Auto-mergeable (18 PRs)
-- Category 2: Independently Reviewable (18 PRs)
-- Category 3: Require Joint Review (18 PRs)</pre>
-                    </div>
-                </div>
-            </section>
-
-            <!-- Slide 9b: Use Case 1 - CodeGraph Solution -->
-            <section>
-                <h3>Solution 2：CodeGraph 方案</h3>
-                <div style="display: flex; gap: 20px; align-items: flex-start;">
-                    <div style="flex: 1; font-size: 0.8em;">
-                        <p><strong>基于图结构分析</strong></p>
-                        <ul>
-                            <li>分析 PR 的风险（影响面等），以及 PR 之间的依赖关系</li>
-                            <li>识别低风险且无冲突的 PR → <strong style="color: #4CAF50;">推荐直接合入</strong></li>
-                            <li>识别有冲突关系的 PR 组 → <strong style="color: #FF9800;">按序 review 和合入</strong></li>
-                        </ul>
-                        <div style="margin-top: 20px; padding: 15px; background: rgba(76, 175, 80, 0.1); border-left: 4px solid #4CAF50; border-radius: 4px;">
-                            <p style="margin: 0; font-size: 1.1em;">
-                                <strong style="color: #4CAF50;">✓ Token 消耗：<span style="font-size: 1.3em;">50,000</span></strong><br>
-                                <span style="font-size: 0.85em;">纯图分析，无需发送代码</span>
-                            </p>
-                        </div>
-                    </div>
-                    <div style="flex: 1; display: flex; flex-direction: column; gap: 15px;">
-                        <div style="flex: 0.8; font-size: 0.65em; background: #f5f5f5; padding: 15px; border-radius: 4px; overflow-y: auto; max-height: 150px;">
-                            <pre style="margin: 0; white-space: pre-wrap; word-wrap: break-word;"># PR Review Report — QwenLM/qwen-code
-
-## Executive Summary
-- Total PRs analyzed: 137
-- Auto-merge candidates: 33
-- Independent review: 30 PR(s)
-- Conflicting groups: 4 component(s) (75 PR(s))
-- 🔴 CRITICAL: 2 PR(s)
-- 🟠 HIGH: 17 PR(s)
-- 🟡 MEDIUM: 64 PR(s)
-- 🟢 LOW: 54 PR(s)
-
-## Part 1 — Auto-merge Candidates
-| PR | Author | Risk | Impact Scope |
-|----|--------|------|-------------|
-| #3564 | huangrichao2020 | 🟢 LOW | 0 |
-| #3563 | huangrichao2020 | 🟢 LOW | 0 |
-| #3522 | pomelo-nwu | 🟢 LOW | 0 |
-
-## Part 3 — Conflicting Group 1
-🔴 CRITICAL | 40 PR(s) | max score: 13.38
-| PR | Author | Risk | Impact Scope |
-|----|--------|------|-------------|
-| #2220 | Mingholy | 🔴 CRITICAL | 110 |
-| #2731 | tanzhenxin | 🔴 CRITICAL | 69 |
-| #2573 | netbrah | 🔴 CRITICAL | 69 |</pre>
-                        </div>
-                        <div style="flex: 1.2; border-radius: 4px; overflow: hidden;">
-                            <h4 style="margin: 0 0 8px 0; color: #2196F3; font-size: 0.85em;">📊 图可视化输出</h4>
-                            <iframe src="cross_pr_overview.html" style="width: 100%; height: 320px; border: 1px solid #ddd; border-radius: 4px;"></iframe>
-                        </div>
-                    </div>
-                </div>
-                <!-- <div style="margin-top: 15px; padding: 12px; background: rgba(33, 150, 243, 0.1); border-left: 4px solid #2196F3; border-radius: 4px;">
-                    <p style="font-size: 0.75em; margin: 0;">
-                        <strong>✨ CodeGraph 的独特优势</strong>：文档 + 可视化图双输出，直观展示 PR 冲突关系，并支持进一步的交互式探索
-                    </p>
-                </div> -->
-            </section>
-
-            <!-- Slide 9b: CodeGraph vs LLM Comparison -->
-            <section>
-                <h3>CodeGraph vs 纯 LLM 对比</h3>
-                
-                <div style="display: flex; gap: 20px; margin-top: 20px;">
-                    <div style="flex: 1; padding: 15px; background: rgba(76, 175, 80, 0.1); border-left: 4px solid #4CAF50; border-radius: 4px;">
-                        <h4 style="margin: 0 0 10px 0; color: #4CAF50;">CodeGraph 方案</h4>
-                        <ul style="font-size: 0.75em;">
-                            <li><strong>Tokens 消耗</strong>：0（纯图分析，无需发送代码）</li>
-                            <li><strong>冲突识别精度</strong>：函数级别</li>
-                            <li><strong>输出形式</strong>：分析报告 + 可视化关系图</li>
-                            <li><strong>可扩展性</strong>：支持基于图的进一步探索</li>
-                        </ul>
-                    </div>
-                    <div style="flex: 1; padding: 15px; background: rgba(244, 67, 54, 0.1); border-left: 4px solid #F44336; border-radius: 4px;">
-                        <h4 style="margin: 0 0 10px 0; color: #F44336;">纯 LLM 方案</h4>
-                        <ul style="font-size: 0.75em;">
-                            <li><strong>Tokens 消耗</strong>：约 500,000 tokens</li>
-                            <li><strong>冲突识别精度</strong>：仅文件级别（可能误判）</li>
-                            <li><strong>输出形式</strong>：仅文本报告</li>
-                            <li><strong>可扩展性</strong>：需消耗 tokens 才能继续深入分析</li>
-                        </ul>
-                    </div>
-                </div>
-                
-                <div style="margin-top: 30px; padding: 15px; background: rgba(255, 152, 0, 0.1); border-left: 4px solid #FF9800; border-radius: 4px;">
-                    <h4 style="margin: 0 0 10px 0; color: #FF9800;">关键洞察</h4>
-                    <p style="font-size: 0.75em; margin: 0;">
-                        纯 LLM 要达到函数级别的冲突识别精度，需要发送更多代码上下文，<strong>Tokens 消耗将进一步增加数倍</strong>，而 CodeGraph 通过图结构天然支持函数级分析。
-                    </p>
-                </div>
-            </section>
-
-            <!-- Slide 9c: Use Case 2 - Problem Introduction -->
-            <section>
-                <h3>场景 2：影响面评估</h3>
-                <div style="padding: 20px; background: rgba(33, 150, 243, 0.1); border-left: 4px solid #2196F3; border-radius: 4px; margin-bottom: 30px;">
-                    <h4 style="margin: 0 0 15px 0; color: #2196F3;">用户问题</h4>
-                    <p style="font-size: 1.1em; margin: 0; font-style: italic;">
-                        "合入 PR #439，影响面多大？"
-                    </p>
-                </div>
-                <div style="text-align: center; margin: 30px 0;">
-                    <img src="pr_439.png" alt="PR 439" style="width: 80%; border-radius: 8px; box-shadow: 0 2px 8px rgba(0,0,0,0.1);">
-                </div>
-            </section>
-
-            <!-- Slide 9d: Use Case 2 - LLM Solution -->
-            <section>
-                <h3>Solution 1：纯 LLM 方案</h3>
-                <div style="padding: 15px; background: #1e1e1e; border-radius: 8px; margin-bottom: 20px;">
-                    <h4 style="margin: 0 0 10px 0; color: #4CAF50; font-size: 0.85em;">💬 对话框提问</h4>
-                    <p style="font-size: 0.9em; margin: 0; color: #e0e0e0; font-style: italic;">
-                        "Q1: 合入 PR #439，影响面有多大？"
-                    </p>
-                    <p style="font-size: 0.9em; margin: 10px 0 0 0; color: #e0e0e0; font-style: italic;">
-                        "Q2: 合入 PR #439，具体来说，它修改的 functions，在原代码中哪些地方被调用？"
-                    </p>
-                </div>
-                <div style="display: flex; gap: 20px; align-items: flex-start;">
-                    <div style="flex: 1; font-size: 0.75em;">
-                        <h4 style="margin: 0 0 10px 0; color: #FF9800;">Q1 的回答</h4>
-                        <ul>
-                            <li>生成 PR #439 详细影响分析报告</li>
-                            <li>识别 46 个直接冲突 PR、69 个间接影响 PR</li>
-                            <li>给出风险评估和合并建议</li>
-                        </ul>
-                        <p style="color: #F44336; margin-top: 10px;">
-                            <strong>Token 消耗：~700,000 tokens</strong>
-                        </p>
-                        <p style="font-size: 0.85em; color: #F44336; margin-top: 5px;">
-                            ⚠️ 冲突检测仍为<strong>文件级别</strong>，可能误判
-                        </p>
-                    </div>
-                    <div style="flex: 1; font-size: 0.75em;">
-                        <h4 style="margin: 0 0 10px 0; color: #F44336;">Q2 的回答</h4>
-                        <div style="padding: 15px; background: rgba(244, 67, 54, 0.1); border-left: 4px solid #F44336; border-radius: 4px;">
-                            <p style="margin: 0; font-size: 0.95em;">
-                                <strong>上下文撑爆</strong>：需要逐个分析修改的代码 diff，<strong style="color: #F44336;">context window 溢出</strong>，无法完成分析。
-                            </p>
-                        </div>
-                        <p style="font-size: 0.85em; color: #666; margin-top: 10px;">
-                            根本原因：LLM 需要查看每个修改的 diff 信息，代码量远超上下文窗口限制
-                        </p>
-                    </div>
-                </div>
-            </section>
-
-            <!-- Slide 9e: Use Case 2 - CodeGraph Solution -->
-            <section>
-                <h3>Solution 2：CodeGraph 方案</h3>
-                <div style="display: flex; gap: 15px; align-items: flex-start;">
-                    <div style="flex: 1; min-width: 0; font-size: 0.7em;">
-                        <h4 style="margin: 0 0 8px 0; color: #4CAF50;">Q1 的回答</h4>
-                        <p style="margin: 0 0 6px 0;">查询 PR 修改的 functions 的调用链，得到完整影响面：</p>
-                        <pre style="font-size: 0.85em; background: #f5f5f5; padding: 8px; border-radius: 3px; margin: 0; white-space: pre-wrap; word-break: break-all; overflow-x: auto;">MATCH (pr:PR {id: 439})
-  -[:MODIFIES]->(f:Function)
-OPTIONAL MATCH (f)
-  &lt;-[:CALLS]-(c:Function)
-RETURN c.name</pre>
-                        <p style="color: #4CAF50; margin-top: 8px;">
-                            <strong>Token 消耗：0</strong>
-                        </p>
-                        <p style="font-size: 0.9em; color: #4CAF50; margin-top: 4px;">
-                            ✓ <strong>函数级</strong>调用关系，毫秒级返回
-                        </p>
-                    </div>
-                    <div style="flex: 1; min-width: 0; font-size: 0.7em;">
-                        <h4 style="margin: 0 0 8px 0; color: #4CAF50;">Q2 的回答</h4>
-                        <p style="margin: 0 0 6px 0;">查询与 #439 共同修改 functions 的 PR，得到直接冲突清单：</p>
-                        <pre style="font-size: 0.85em; background: #f5f5f5; padding: 8px; border-radius: 3px; margin: 0; white-space: pre-wrap; word-break: break-all; overflow-x: auto;">MATCH (pr1:PR {id: 439})
-  -[:MODIFIES]->(f:Function)
-MATCH (pr2:PR)-[:MODIFIES]->(f)
-WHERE pr2.id &lt;&gt; 439
-RETURN pr2.id, collect(f.name)</pre>
-                        <p style="color: #4CAF50; margin-top: 8px;">
-                            <strong>Token 消耗：0</strong>
-                        </p>
-                        <p style="font-size: 0.9em; color: #4CAF50; margin-top: 4px;">
-                            ✓ 不受 PR 大小限制，<strong>函数级</strong>冲突识别
-                        </p>
-                    </div>
-                </div>
-            </section>
-
-            <!-- Slide 9e-1: CodeGraph vs LLM Comparison for Scenario 2 -->
-            <section>
-                <h3>CodeGraph vs 纯 LLM 对比</h3>
-                
-                <div style="display: flex; gap: 20px; margin-top: 20px;">
-                    <div style="flex: 1; padding: 15px; background: rgba(76, 175, 80, 0.1); border-left: 4px solid #4CAF50; border-radius: 4px;">
-                        <h4 style="margin: 0 0 10px 0; color: #4CAF50;">CodeGraph 方案</h4>
-                        <ul style="font-size: 0.7em;">
-                            <li><strong>Tokens 消耗</strong>：0（Cypher 查询直接获取结果）</li>
-                            <li><strong>分析精度</strong>：函数级别调用关系</li>
-                            <li><strong>PR 大小限制</strong>：无限制</li>
-                            <li><strong>可扩展性</strong>：支持智能提示与递归探索</li>
-                        </ul>
-                    </div>
-                    <div style="flex: 1; padding: 15px; background: rgba(244, 67, 54, 0.1); border-left: 4px solid #F44336; border-radius: 4px;">
-                        <h4 style="margin: 0 0 10px 0; color: #F44336;">纯 LLM 方案</h4>
-                        <ul style="font-size: 0.7em;">
-                            <li><strong>Tokens 消耗</strong>：Q1 ~700,000 tokens；Q2 上下文溢出</li>
-                            <li><strong>分析精度</strong>：仅文件级别（可能误判）</li>
-                            <li><strong>PR 大小限制</strong>：大型 PR 无法完成分析</li>
-                            <li><strong>可扩展性</strong>：需消耗 tokens 才能继续深入分析</li>
-                        </ul>
-                    </div>
-                </div>
-                
-                <div style="margin-top: 20px; padding: 15px; background: rgba(255, 152, 0, 0.1); border-left: 4px solid #FF9800; border-radius: 4px;">
-                    <h4 style="margin: 0 0 10px 0; color: #FF9800;">关键洞察</h4>
-                    <p style="font-size: 0.7em; margin: 0;">
-                        LLM 对大型 PR 的影响面分析<strong>能力有限</strong>：Q1 花费 70 万 tokens 仅得到文件级结果，Q2 直接上下文溢出。而 CodeGraph 通过图查询<strong>0 token</strong> 即可获得函数级调用关系，并支持递归探索。
-                    </p>
-                </div>
-            </section>
-
-            <!-- Slide 9f: Use Case 2 - Smart Suggestions -->
-            <section>
-                <h3>CodeGraph优化: 智能提示与递归探索</h3>
-                
-                <div style="padding: 15px; background: rgba(33, 150, 243, 0.1); border-left: 4px solid #2196F3; border-radius: 4px; margin-bottom: 20px;">
-                    <h4 style="margin: 0 0 10px 0; color: #2196F3;">🎯 智能提示与递归探索</h4>
-                    <ul style="font-size: 0.8em; margin: 0;">
-                        <li><strong>智能提示</strong>：多 PR 分析完成后自动提示重要问题，如："PR #439 影响面广，建议关注"</li>
-                        <li><strong>关联问题 1</strong> PR #439 修改了哪些 functions？</li>
-                        <li><strong>关联问题 2</strong> PR #439 合入后，会对哪些 PR 产生直接冲突或间接影响？</li>
-                        <li><strong>关联问题 3</strong> PR #439 中修改的functions，在原代码调用链上有哪些影响？</li>
-                    </ul>
-                </div>
-                
-                <div style="display: flex; gap: 20px; align-items: center;">
-                    <!-- <div style="flex: 1; font-size: 0.8em;">
-                        <p><strong>引导式探索流程</strong></p>
-                        <ol>
-                            <li>CodeGraph 分析 PR 影响面</li>
-                            <li>识别高风险 PR，提示优先 review</li>
-                            <li>基于关系图生成递归问题</li>
-                            <li>支持深度探索调用链和影响面</li>
-                            <li>形成"分析 → 洞察 → 深入"的闭环</li>
-                        </ol>
-                    </div> -->
-                    <div style="flex: 1; text-align: center;">
-                        <p style="font-size: 0.9em; color: #4CAF50; font-weight: bold;">
-                            从被动查询 → 到主动洞察 → 再到深度探索
-                        </p>
-                    </div>
-                </div>
-            </section>
-            
-            <!-- Slide 9d: Use Case 3 - Architecture Analysis -->
-            <section>
-                <h3>场景 3：架构分析</h3>
-                <p style="font-size: 0.8em; margin: 10px 0;">用户问题："帮我分析一下 Claude Code 代码架构"
-                    <ul style="font-size: 0.8em;">
-                        <li>分层分析揭示了<strong>代码的洋葱圈式架构</strong>：入口层 → UI层 → 逻辑层 → 服务层 → 基础层</li>
-                    </ul>
-                </p>
-                <img src="cc_arch.png" alt="Claude Code Architecture" style="width: 60%; height: 60%;">
-                <p style="font-size: 0.6em; margin-top: 10px; color: #4CAF50;">
-                    ✨ 从图的结构性角度分析代码
-                </p>
-            </section>
-
-            <!-- Slide 10b: Use Case 4 - Bug Root Cause -->
-            <section>
-                <h3>场景 4：Bug 根因定位（Graph + Vector 协同）</h3>
-                <div style="padding: 10px 15px; background: rgba(33, 150, 243, 0.1); border-left: 4px solid #2196F3; border-radius: 4px; margin-bottom: 12px;">
-                    <p style="font-size: 0.8em; margin: 0;">
-                        <strong>用户问题</strong>："这个 GitHub issue #1234 报告的 crash，根因在代码哪里？"
-                    </p>
-                </div>
-
-                <div style="display: flex; gap: 15px; align-items: stretch;">
-                    <div style="flex: 1.1; min-width: 0; font-size: 0.65em;">
-                        <h4 style="margin: 0 0 6px 0; color: #4CAF50;">分析流程</h4>
-                        <ol style="margin: 0; padding-left: 18px; line-height: 1.45;">
-                            <li>解析 issue：抽取路径、函数名、stack trace</li>
-                            <li><strong style="color: #2196F3;">[Graph]</strong> 路径匹配 → File 节点</li>
-                            <li><strong style="color: #FF9800;">[zvec]</strong> 语义召回：<code>cross_locate(issue.body)</code><br>
-                                <span style="color: #888;">捕获 issue 未明确提到的相关代码</span></li>
-                            <li><strong style="color: #2196F3;">[Graph]</strong> 反向遍历 CALLS 边追溯调用者</li>
-                            <li>综合打分 → 根因候选</li>
-                        </ol>
-                    </div>
-                    <div style="flex: 1; min-width: 0; font-size: 0.65em; padding: 10px; background: #f5f5f5; border-radius: 4px;">
-                        <h4 style="margin: 0 0 6px 0; color: #4CAF50;">打分公式</h4>
-                        <table style="font-size: 0.95em; width: 100%;">
-                            <tr style="background: #e8f5e9;">
-                                <th align="left">信号</th>
-                                <th align="right">分值</th>
-                            </tr>
-                            <tr><td>函数名直接出现</td><td align="right">+1.0</td></tr>
-                            <tr><td>文件路径匹配</td><td align="right">+0.8</td></tr>
-                            <tr><td><strong style="color: #FF9800;">语义匹配 (zvec)</strong></td><td align="right">+sim</td></tr>
-                            <tr><td>调用者（每跳衰减）</td><td align="right">+0.5/h</td></tr>
-                        </table>
-                        <p style="margin: 8px 0 0 0; color: #666;">
-                            zvec 提供 0~1 余弦相似度，作为评分关键加权项
-                        </p>
-                    </div>
-                </div>
-
-                <p style="font-size: 0.65em; margin-top: 10px; color: #4CAF50; text-align: center;">
-                    ✨ <strong>Graph 精确召回</strong>（路径/调用链）+ <strong>Vector 语义补足</strong>（issue→代码）
-                </p>
-            </section>
-
-            
-
-            <!-- Slide 11: Implemented Features -->
-            <section>
-                <h2>已实现功能</h2>
-                <h3>核心基础设施</h3>
-                <ul>
-                    <li>✅ 代码索引：tree-sitter AST 解析，支持 C/Python/JS/TS</li>
-                    <li>✅ 图数据库：NeuG 嵌入式，支持 Cypher 查询</li>
-                    <li>✅ 向量数据库：zvec 嵌入式，支持语义搜索</li>
-                    <li>✅ Git 历史集成：commit 索引 + MODIFIES 边 backfill</li>
-                </ul>
-            </section>
-
-            <!-- Slide 13: Query & Analysis -->
-            <section>
-                <h2>查询与分析功能</h2>
-                <ul>
-                    <li>✅ 结构查询：基础查询已实现</li>
-                    <li>✅ 语义搜索：向量相似度搜索</li>
-                    <li>✅ 历史查询：变更归属、协同修改</li>
-                    <li>✅ 架构分析：模块发现、桥接函数、耦合度</li>
-                    <li>✅ 死代码检测：无调用函数识别</li>
-                </ul>
-            </section>
-
-            <!-- Slide 16: Pending Features -->
-            <section>
-                <h2>待完善/实现功能</h2>
-                <ul>
-                    <li><strong>增量更新</strong>：检测代码变更，增量更新图数据库和向量数据库</li>
-                    <li><strong>引导式探索</strong>：更多查询模板和问题多样化</li>
-                    <li><strong>社区发现</strong>：基于 NeuG GDS 图算法进行社区发现</li>
-                    <li><strong>置信度标签</strong>：为概率性特征（语义搜索结果）添加置信度标签（高/中/低）</li>
-                    <li>更多实际需求...</li>
-                </ul>
-            </section>
-
-            <!-- Slide 20: Summary -->
-            <section>
-                <h2>总结</h2>
-                <p>CodeGraph 的核心价值在于：<strong>用图分析做预筛选，用大模型做深度理解</strong>。</p>
-                <ul>
-                    <li><strong>显著减少 token 消耗</strong>：代码审查场景实测 <strong>50,000 vs 1,200,000 tokens</strong></li>
-                    <li><strong>提供全局视角</strong>：跨模块依赖、代码调用链、演化历史、PR冲突等</li>
-                    <li><strong>模式发现</strong>：自动发现高耦合、孤立模块、循环依赖等架构问题</li>
-                    <li><strong>主动洞察</strong>：引导式探索，而非被动查询</li>
-                    <li><strong>完全本地化</strong>：隐私保障</li>
-                </ul>
-            </section>
-
-            <!-- Slide 22: Vision -->
-            <section>
-                <h2>愿景</h2>
-                <p style="font-size: 1.2em; line-height: 1.6;">
-                    打造轻量、智能的代码分析工具，<br>
-                    让每个开发者都能深入理解自己的代码库，<br>
-                    <span style="color: #4CAF50; font-weight: bold;">实测节省 96% tokens 消耗</span><br>
-                    <span style="color: #2196F3;">让大模型的使用成本不再是瓶颈</span>
-                </p>
-            </section>
-        </div>
+<!-- 12. neug 1: freeze-assign -->
+<section>
+  <span class="section-number">05 / 解法</span>
+  <h3>1. 增量归组（freeze-assign Leiden）</h3>
+  <div style="display: flex; gap: 2em; align-items: flex-start;">
+    <div style="flex: 1;">
+      <ul>
+        <li>已有概念组<span class="green">保持不变</span>，只对新增内容分配概念组</li>
+        <li>不只是快——更重要的是<span class="green">概念稳定性</span></li>
+        <li>原来叫"compiler"的概念，增量后还是"compiler"。不漂移，可 diff</li>
+      </ul>
+      <p class="dim small" style="margin-top: 1em;">对比 LLM：每次 ingest 都可能重新理解组织结构。freeze-assign 给了结构层面的稳定性保证。</p>
     </div>
+    <div style="flex: 1;">
+      <pre style="font-size: 0.5em; margin: 0;"><code>-- freeze-assign Leiden
+CALL leiden('g', {freeze_assign: true})
+YIELD node, community,
+     previous_community
+RETURN node.id,
+       community,
+       previous_community
+ORDER BY node.id;</code></pre>
+      <p class="dim small" style="margin-top: 0.5em;">旧节点: previous_community 有值（冻结）<br>新节点: previous_community = NULL</p>
+    </div>
+  </div>
+</section>
 
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/reveal.js/4.6.0/reveal.min.js"></script>
-    <script>
-        Reveal.initialize({
-            hash: true,
-            slideNumber: true,
-            transition: 'slide',
-            transitionSpeed: 'default',
-            backgroundTransition: 'fade'
-        });
-    </script>
+<!-- 13. neug 2: Cypher -->
+<section>
+  <span class="section-number">05 / 解法</span>
+  <h3>2. Cypher 驱动的变更检测</h3>
+  <div style="display: flex; gap: 2em; align-items: flex-start;">
+    <div style="flex: 1;">
+      <ul>
+        <li>增量归组后，用 Cypher 查询语言对图做分析</li>
+        <li>写 <code>group by</code> 语句，按社区聚合计算变更统计</li>
+        <li>统计每个概念组的新增成员数、旧成员存活数</li>
+        <li>据此判定：<span class="tag tag-green">stable</span> <span class="tag tag-blue">changed</span> <span class="tag tag-warn">new</span> <span class="tag tag-warn">dissolved</span></li>
+      </ul>
+      <p style="margin-top: 0.8em;">不是 LLM "猜"哪些页面受影响，<br>而是<span class="green">用查询语言精确计算</span>。</p>
+    </div>
+    <div style="flex: 1;">
+      <pre style="font-size: 0.45em; margin: 0;"><code>-- group by 社区，计算变更统计
+WITH community, count(*) AS total,
+     count(previous_community)
+       AS old_members
+WITH community, total, old_members,
+     total - old_members AS new_members
+RETURN community, total,
+       old_members, new_members,
+  CASE
+    WHEN old_members = 0 THEN 'new'
+    WHEN new_members = 0 THEN 'stable'
+    ELSE 'growth'
+  END AS change_type
+ORDER BY change_type, community;</code></pre>
+    </div>
+  </div>
+</section>
+
+<!-- 14. neug 3: COPY TEMP -->
+<section>
+  <span class="section-number">05 / 解法</span>
+  <h3>3. 临时图计算（COPY TEMP）</h3>
+  <div style="display: flex; gap: 2em; align-items: flex-start;">
+    <div style="flex: 1;">
+      <ul>
+        <li><code>COPY TEMP FROM</code> 导入临时边，不修改持久图数据</li>
+        <li>增量归组时构建临时聚合视图（如符号级→文件级）</li>
+        <li>用完即弃，<span class="green">原图保持不变</span></li>
+      </ul>
+      <p style="margin-top: 0.8em;">增量计算不会对已有图产生副作用——每次分析都在<span class="green">隔离的临时结构</span>上完成。</p>
+    </div>
+    <div style="flex: 1;">
+      <pre style="font-size: 0.5em; margin: 0;"><code>-- 导入临时边，不修改持久图
+COPY TEMP file_edges
+  FROM 'edges.csv' (DELIM=',');
+
+-- 在临时图上跑聚类
+CALL project_graph('g2',
+  ['file_node'],
+  {'[file_node, file_edges,
+    file_node]': ''});
+CALL leiden('g2',
+  {concurrency: 4});
+
+-- 用完即弃，原图不变
+CALL drop_projected_graph('g2');</code></pre>
+    </div>
+  </div>
+</section>
+
+<!-- 14.5. Example: neug -->
+<section>
+  <span class="section-number">05 / 示例</span>
+  <h3 class="green">示例：neug 增量聚类 + Cypher</h3>
+  <table style="font-size: 0.65em;">
+    <tr><th>变更类型</th><th>数量</th><th>wiki 动作</th><th>需要 LLM？</th></tr>
+    <tr><td class="green">stable</td><td>2,413 (98.9%)</td><td>直接复用</td><td class="dim">否</td></tr>
+    <tr><td class="accent">changed</td><td>21</td><td>更新文章</td><td>是</td></tr>
+    <tr><td class="accent">new</td><td>119</td><td>生成新文章</td><td>是</td></tr>
+    <tr><td class="warn">dissolved</td><td>4</td><td>归档</td><td class="dim">否</td></tr>
+  </table>
+  <p style="margin-top: 0.8em;">只有 <span class="green">144 个概念组</span>（21+119+4）需要处理，其余 2,413 个直接复用。</p>
+  <p class="dim small">例：comm 0 "pattern_matching_functions" 新增 72 个成员；comm 1322 "PropertyGraph" 流失 25 个成员。</p>
+</section>
+
+<!-- 14.6. E2E: flow -->
+<section>
+  <span class="section-number">05 / 示例</span>
+  <h2>端到端流程</h2>
+  <pre style="font-size: 0.55em;"><code>
+test1 (基线) → 全量构建图 + Leiden + 生成 wiki
+      ↓
+test2 (增量) → 只提取 47 个变更文件
+      ↓
+freeze-assign Leiden → 旧节点冻结，只分配新节点
+      ↓
+Cypher group by → 2,413 stable / 21 changed / 119 new / 4 dissolved
+      ↓
+增量 wiki → 只有 144 个概念组需要 LLM 更新
+  </code></pre>
+  <p class="dim small" style="margin-top: 1em;">代码 repo 是 POC 的第一个场景，但不是唯一场景。<br>任何"有结构、会变化的内容源"都适用。</p>
+</section>
+
+<!-- 16. Summary table -->
+<section>
+  <span class="section-number">06 / 总结</span>
+  <h2>定位总结</h2>
+  <table>
+    <thead>
+      <tr><th></th><th>LLM-wiki</th><th>+ 图</th><th>+ neug 增量</th></tr>
+    </thead>
+    <tbody>
+      <tr><td class="accent">概念边界</td><td>LLM 判断</td><td>图算法确定</td><td class="green">算法 + 增量稳定</td></tr>
+      <tr><td class="accent">变更检测</td><td>LLM 读文本猜</td><td>全量重建</td><td class="green">Cypher 精确计算</td></tr>
+      <tr><td class="accent">更新成本</td><td>每次 ingest 扫描</td><td>O(K) 全量</td><td class="green">O(ΔK) 只处理变化</td></tr>
+      <tr><td class="accent">概念稳定性</td><td>可能漂移</td><td>编号变</td><td class="green">freeze-assign 不变</td></tr>
+      <tr><td class="accent">计算安全性</td><td>—</td><td>—</td><td class="green">临时图隔离</td></tr>
+    </tbody>
+  </table>
+</section>
+
+<!-- 17. Closing -->
+<section>
+  <h2>不是替代，而是加一层</h2>
+  <p style="font-size: 1.1em; margin-top: 1em;">
+    在 LLM-wiki 之上加一层<span class="accent">结构化的增量能力</span>
+  </p>
+  <ul style="margin-top: 1em;">
+    <li>用<span class="accent">图</span>提供概念依据</li>
+    <li>用<span class="green">增量算法</span>保证更新又快又准</li>
+    <li>用 <span class="warn">Cypher</span> 把变更检测从"猜"变成"算"</li>
+  </ul>
+  <p class="dim small" style="margin-top: 2em;">graphify · neug · wiki</p>
+</section>
+
+</div></div>
+<script src="https://cdn.jsdelivr.net/npm/reveal.js@5.1.0/dist/reveal.js"></script>
+<script>
+  Reveal.initialize({
+    hash: true,
+    slideNumber: 'c/t',
+    transition: 'slide',
+    transitionSpeed: 'fast',
+    controls: true,
+    progress: true,
+    width: 1280,
+    height: 720,
+    margin: 0.08
+  });
+</script>
 </body>
 </html>
