@@ -233,7 +233,8 @@
     </div>
     <div style="flex: 1;">
       <pre style="font-size: 0.5em; margin: 0;"><code>-- freeze-assign Leiden
-CALL leiden('g', {freeze_assign: true})
+CALL leiden('g', {concurrency: 1,
+  initial_community_property: 'delta_comm'})
 YIELD node, community,
      previous_community
 RETURN node.id,
@@ -260,16 +261,18 @@ ORDER BY node.id;</code></pre>
     </div>
     <div style="flex: 1;">
       <pre style="font-size: 0.45em; margin: 0;"><code>-- group by 社区，计算变更统计
-WITH community, count(*) AS total,
-     count(previous_community)
+MATCH (n)
+WITH n.community AS community,
+     count(*) AS total,
+     count(n.previous_community)
        AS old_members
-WITH community, total, old_members,
-     total - old_members AS new_members
 RETURN community, total,
-       old_members, new_members,
+       old_members,
+       total - old_members AS new_members,
   CASE
     WHEN old_members = 0 THEN 'new'
-    WHEN new_members = 0 THEN 'stable'
+    WHEN old_members = total
+     THEN 'stable'
     ELSE 'growth'
   END AS change_type
 ORDER BY change_type, community;</code></pre>
@@ -291,19 +294,24 @@ ORDER BY change_type, community;</code></pre>
       <p style="margin-top: 0.8em;">增量计算不会对已有图产生副作用——每次分析都在<span class="green">隔离的临时结构</span>上完成。</p>
     </div>
     <div style="flex: 1;">
-      <pre style="font-size: 0.5em; margin: 0;"><code>-- 导入临时边，不修改持久图
-COPY TEMP file_edges
-  FROM 'edges.csv' (DELIM=',');
+      <pre style="font-size: 0.5em; margin: 0;"><code>-- 1. 导入临时节点和边
+COPY TEMP TempNode
+  FROM 'nodes.csv'
+  (header=true, delim=',');
+COPY TEMP TempEdge
+  FROM 'edges.csv'
+  (header=true, delim=',',
+   from='TempNode', to='TempNode');
 
--- 在临时图上跑聚类
+-- 2. 在临时图上跑聚类
 CALL project_graph('g2',
-  ['file_node'],
-  {'[file_node, file_edges,
-    file_node]': ''});
+  ['TempNode'],
+  {'[TempNode, TempEdge,
+    TempNode]': ''});
 CALL leiden('g2',
   {concurrency: 4});
 
--- 用完即弃，原图不变
+-- 3. 用完即弃，原图不变
 CALL drop_projected_graph('g2');</code></pre>
     </div>
   </div>
