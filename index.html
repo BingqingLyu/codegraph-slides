@@ -1,424 +1,2765 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="zh-CN">
 <head>
-<meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
-<title>wiki生成与维护：图能做什么</title>
-<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/reveal.js@5.1.0/dist/reset.css">
-<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/reveal.js@5.1.0/dist/reveal.css">
-<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/reveal.js@5.1.0/dist/theme/white.css">
-<style>
-  :root {
-    --accent: #0969da;
-    --accent2: #1a7f37;
-    --warn: #d1242f;
-    --dim: #6e7781;
-    --bg: #ffffff;
-    --code-bg: #f6f8fa;
-  }
-  .reveal { font-family: -apple-system, "Helvetica Neue", "PingFang SC", "Microsoft YaHei", sans-serif; color: #24292f; }
-  .reveal h1, .reveal h2, .reveal h3 { text-transform: none; font-weight: 700; color: #24292f; }
-  .reveal h1 { font-size: 2.2em; }
-  .reveal h2 { font-size: 1.6em; color: var(--accent); }
-  .reveal h3 { font-size: 1.2em; color: var(--accent2); }
-  .reveal p, .reveal li { font-size: 0.85em; line-height: 1.6; color: #24292f; }
-  .reveal code { color: var(--accent2); background: rgba(26,127,55,.08); padding: 1px 6px; border-radius: 4px; font-size: 0.9em; }
-  .reveal pre { width: 100%; font-size: 0.65em; line-height: 1.5; }
-  .reveal pre code { background: var(--code-bg); color: #24292f; }
-  .reveal table { font-size: 0.6em; margin: auto; border-collapse: collapse; }
-  .reveal table th { color: var(--accent); border-bottom: 2px solid var(--accent); padding: 8px 14px; }
-  .reveal table td { border-bottom: 1px solid rgba(110,112,129,.2); padding: 6px 14px; }
-  .reveal .accent { color: var(--accent); }
-  .reveal .green { color: var(--accent2); }
-  .reveal .warn { color: var(--warn); }
-  .reveal .dim { color: var(--dim); }
-  .reveal .small { font-size: 0.7em; }
-  .reveal .tag { display: inline-block; padding: 2px 10px; border-radius: 12px; font-size: 0.65em; margin: 2px; }
-  .reveal .tag-blue { background: rgba(9,105,218,.1); color: var(--accent); }
-  .reveal .tag-green { background: rgba(26,127,55,.1); color: var(--accent2); }
-  .reveal .tag-warn { background: rgba(188,76,0,.1); color: var(--warn); }
-  .reveal .flow-box { display: inline-block; padding: 10px 16px; border: 1px solid rgba(9,105,218,.25); border-radius: 8px; margin: 4px; font-size: 0.75em; background: #f6f8fa; }
-  .reveal .flow-arrow { color: var(--dim); font-size: 0.8em; }
-  .reveal .section-number { color: var(--dim); font-size: 0.5em; display: block; margin-bottom: 0.3em; }
-  .reveal .title-sub { color: var(--dim); font-size: 0.5em; margin-top: 0.5em; }
-  .reveal ul { list-style: none; padding-left: 0; }
-  .reveal ul li { margin-bottom: 0.5em; }
-  .reveal ul li::before { content: "—"; color: var(--dim); margin-right: 0.5em; }
-</style>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>NeuG 图数据库：驱动 wiki 的构建、维护与检索</title>
+  <style>
+    :root {
+      --canvas-width: 1280;
+      --canvas-height: 720;
+      --paper: #ffffff;
+      --ink: #17202b;
+      --muted: #6c7785;
+      --accent: #00a783;
+      --warning: #c45555;
+    }
+
+    * { box-sizing: border-box; }
+
+    html,
+    body {
+      width: 100%;
+      height: 100%;
+      margin: 0;
+      overflow: hidden;
+      background: #eef1f3;
+      color: var(--ink);
+      font-family: Inter, "SF Pro Display", "PingFang SC", "Microsoft YaHei", sans-serif;
+    }
+
+    .stage {
+      position: relative;
+      width: 100%;
+      height: 100%;
+      display: grid;
+      place-items: center;
+    }
+
+    .deck {
+      position: relative;
+      width: calc(var(--canvas-width) * 1px);
+      height: calc(var(--canvas-height) * 1px);
+      transform-origin: center center;
+      background: var(--paper);
+      box-shadow: 0 22px 70px rgba(21, 31, 43, 0.14);
+    }
+
+    .deck-controls {
+      position: fixed;
+      left: 50%;
+      bottom: 14px;
+      z-index: 20;
+      display: flex;
+      align-items: center;
+      gap: 9px;
+      padding: 6px 8px;
+      border: 1px solid rgba(23, 32, 43, 0.1);
+      border-radius: 999px;
+      background: rgba(255, 255, 255, 0.92);
+      box-shadow: 0 8px 24px rgba(23, 32, 43, 0.12);
+      backdrop-filter: blur(8px);
+      transform: translateX(-50%);
+    }
+
+    .nav-button {
+      display: grid;
+      place-items: center;
+      width: 34px;
+      height: 34px;
+      padding: 0;
+      border: 0;
+      border-radius: 50%;
+      background: transparent;
+      color: var(--ink);
+      font: inherit;
+      font-size: 22px;
+      line-height: 1;
+      cursor: pointer;
+      transition: color 160ms ease, background 160ms ease, transform 160ms ease;
+    }
+
+    .nav-button:hover:not(:disabled) {
+      color: var(--accent);
+      background: rgba(0, 167, 131, 0.09);
+      transform: translateY(-1px);
+    }
+
+    .nav-button:focus-visible {
+      outline: 2px solid var(--accent);
+      outline-offset: 2px;
+    }
+
+    .nav-button:disabled {
+      color: #b6bdc5;
+      cursor: default;
+    }
+
+    .slide-position {
+      min-width: 43px;
+      color: #65717f;
+      font-size: 13px;
+      line-height: 1;
+      text-align: center;
+      font-variant-numeric: tabular-nums;
+      letter-spacing: 0.06em;
+    }
+
+    .slide {
+      position: absolute;
+      inset: 0;
+      display: none;
+      overflow: hidden;
+      background: var(--paper);
+    }
+
+    .slide.is-active { display: block; }
+
+    .title-slide {
+      padding: 116px 104px 92px;
+      background-color: var(--paper);
+      background-image:
+        linear-gradient(rgba(23, 32, 43, 0.032) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(23, 32, 43, 0.032) 1px, transparent 1px);
+      background-size: 32px 32px;
+    }
+
+    .content-slide {
+      padding: 66px 88px 60px;
+      background-color: var(--paper);
+      background-image:
+        linear-gradient(rgba(23, 32, 43, 0.032) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(23, 32, 43, 0.032) 1px, transparent 1px);
+      background-size: 32px 32px;
+    }
+
+    .slide-kicker {
+      margin: 0 0 12px;
+      color: var(--accent);
+      font-size: 17px;
+      line-height: 1;
+      font-weight: 720;
+      letter-spacing: 0.12em;
+    }
+
+    .slide-title {
+      width: 1050px;
+      margin: 0;
+      color: var(--ink);
+      font-size: 45px;
+      line-height: 1.16;
+      font-weight: 720;
+      letter-spacing: -0.025em;
+    }
+
+    .background-columns {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 74px;
+      margin-top: 44px;
+    }
+
+    .column-heading {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      margin: 0 0 22px;
+      color: var(--ink);
+      font-size: 24px;
+      line-height: 1.2;
+      font-weight: 700;
+    }
+
+    .column-heading::before {
+      content: "";
+      width: 8px;
+      height: 25px;
+      border-radius: 999px;
+      background: var(--accent);
+    }
+
+    .background-column.llm .column-heading::before { background: #758191; }
+
+    .challenge-list {
+      display: grid;
+      gap: 19px;
+      margin: 0;
+      padding: 0;
+      list-style: none;
+    }
+
+    .challenge-item {
+      display: grid;
+      grid-template-columns: 34px 1fr;
+      gap: 13px;
+      align-items: start;
+    }
+
+    .challenge-number {
+      display: grid;
+      place-items: center;
+      width: 31px;
+      height: 31px;
+      margin-top: 1px;
+      border: 1.5px solid rgba(0, 167, 131, 0.55);
+      border-radius: 50%;
+      color: var(--accent);
+      background: rgba(255, 255, 255, 0.88);
+      font-size: 15px;
+      font-weight: 760;
+    }
+
+    .llm .challenge-number {
+      border-color: rgba(117, 129, 145, 0.5);
+      color: #667281;
+    }
+
+    .challenge-copy {
+      margin: 0;
+      color: #4d5866;
+      font-size: 20px;
+      line-height: 1.45;
+    }
+
+    .challenge-copy strong {
+      color: var(--ink);
+      font-size: 21px;
+      font-weight: 720;
+    }
+
+    .neug-advantage {
+      position: absolute;
+      left: 88px;
+      right: 88px;
+      bottom: 54px;
+      min-height: 112px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 40px;
+      padding: 23px 30px 22px;
+      border-left: 8px solid var(--accent);
+      background: rgba(0, 167, 131, 0.075);
+    }
+
+    .advantage-title {
+      flex: 0 0 690px;
+      margin: 0;
+      color: var(--ink);
+      font-size: 27px;
+      line-height: 1.28;
+      font-weight: 720;
+      letter-spacing: -0.012em;
+    }
+
+    .advantage-title .brand { color: var(--accent); }
+
+    .advantage-detail {
+      margin: 0;
+      color: #4c635e;
+      font-size: 17px;
+      line-height: 1.5;
+      text-align: right;
+    }
+
+    .content-slide > .page-mark {
+      right: 88px;
+      bottom: 18px;
+    }
+
+    .build-question {
+      margin: 22px 0 0;
+      color: #4f5b68;
+      font-size: 25px;
+      line-height: 1.35;
+      font-weight: 520;
+    }
+
+    .build-question strong {
+      color: var(--ink);
+      font-weight: 740;
+    }
+
+    .build-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 28px;
+      margin-top: 34px;
+    }
+
+    .build-column {
+      position: relative;
+      display: grid;
+      grid-template-rows: 160px 34px 160px;
+    }
+
+    .build-card {
+      position: relative;
+      padding: 23px 24px 21px;
+      border: 1px solid rgba(23, 32, 43, 0.13);
+      background: rgba(255, 255, 255, 0.84);
+    }
+
+    .build-card.problem {
+      border-top: 5px solid #7e8997;
+      box-shadow: 0 8px 22px rgba(23, 32, 43, 0.055);
+    }
+
+    .build-card.solution {
+      border-color: rgba(0, 167, 131, 0.2);
+      border-top: 5px solid var(--accent);
+      background: rgba(0, 167, 131, 0.065);
+    }
+
+    .build-card-label {
+      margin: 0 0 10px;
+      color: #727e8c;
+      font-size: 14px;
+      line-height: 1;
+      font-weight: 720;
+      letter-spacing: 0.12em;
+    }
+
+    .solution .build-card-label { color: var(--accent); }
+
+    .build-card-title {
+      margin: 0 0 8px;
+      color: var(--ink);
+      font-size: 23px;
+      line-height: 1.2;
+      font-weight: 730;
+    }
+
+    .build-card-copy {
+      margin: 0;
+      color: #56616e;
+      font-size: 17px;
+      line-height: 1.42;
+    }
+
+    .build-flow-arrow {
+      display: grid;
+      place-items: center;
+      color: var(--accent);
+      font-size: 24px;
+      line-height: 1;
+      font-weight: 720;
+    }
+
+    .maintenance-grid {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      gap: 18px;
+      margin-top: 34px;
+    }
+
+    .maintenance-column {
+      display: grid;
+      grid-template-rows: 154px 32px 154px;
+    }
+
+    .maintenance-card {
+      padding: 19px 18px 17px;
+    }
+
+    .maintenance-card .build-card-label {
+      margin-bottom: 8px;
+      font-size: 12.5px;
+    }
+
+    .maintenance-card .build-card-title {
+      margin-bottom: 7px;
+      font-size: 20px;
+    }
+
+    .maintenance-card .build-card-copy {
+      font-size: 15.5px;
+      line-height: 1.42;
+    }
+
+    .experiment-intro {
+      margin: 16px 0 0;
+      color: #586472;
+      font-size: 19px;
+      line-height: 1.42;
+    }
+
+    .experiment-intro strong {
+      color: var(--ink);
+      font-weight: 730;
+    }
+
+    .cross-directory-diagram {
+      display: grid;
+      grid-template-columns: 286px 60px 1fr;
+      height: 390px;
+      margin-top: 24px;
+    }
+
+    .directory-panel {
+      height: 390px;
+      padding: 21px 22px;
+      border: 1px solid rgba(23, 32, 43, 0.13);
+      background: rgba(255, 255, 255, 0.84);
+      box-shadow: 0 8px 24px rgba(23, 32, 43, 0.05);
+    }
+
+    .diagram-label {
+      margin: 0 0 17px;
+      color: #6a7684;
+      font-size: 14px;
+      line-height: 1;
+      font-weight: 740;
+      letter-spacing: 0.1em;
+    }
+
+    .directory-tree,
+    .directory-tree ul {
+      margin: 0;
+      padding: 0;
+      list-style: none;
+    }
+
+    .directory-tree ul {
+      position: relative;
+      margin-left: 17px;
+      padding-left: 17px;
+      border-left: 1px solid #d8dde3;
+    }
+
+    .directory-tree li {
+      position: relative;
+      min-height: 26px;
+      color: #5b6673;
+      font-family: "SFMono-Regular", Consolas, "Liberation Mono", monospace;
+      font-size: 14px;
+      line-height: 26px;
+    }
+
+    .directory-tree ul > li::before {
+      content: "";
+      position: absolute;
+      top: 13px;
+      left: -17px;
+      width: 11px;
+      border-top: 1px solid #d8dde3;
+    }
+
+    .directory-tree .folder {
+      color: var(--ink);
+      font-weight: 700;
+    }
+
+    .directory-tree .file::after,
+    .directory-tree .operation::after {
+      content: "";
+      display: inline-block;
+      width: 6px;
+      height: 6px;
+      margin-left: 8px;
+      border-radius: 50%;
+      background: var(--accent);
+      vertical-align: 2px;
+    }
+
+    .directory-tree .operation::after { background: #69a6d9; }
+
+    .diagram-arrows {
+      display: grid;
+      grid-template-rows: 1fr 1fr;
+      align-items: center;
+      justify-items: center;
+      color: var(--accent);
+      font-size: 31px;
+      line-height: 1;
+    }
+
+    .diagram-arrows span:last-child { color: var(--warning); }
+
+    .comparison-stack {
+      display: grid;
+      grid-template-rows: 178px 194px;
+      gap: 18px;
+    }
+
+    .comparison-panel {
+      position: relative;
+      padding: 18px 21px;
+      border: 1px solid rgba(0, 167, 131, 0.24);
+      border-left: 6px solid var(--accent);
+      background: rgba(0, 167, 131, 0.055);
+    }
+
+    .comparison-panel.llm-result {
+      border-color: rgba(196, 85, 85, 0.24);
+      border-left-color: var(--warning);
+      background: rgba(196, 85, 85, 0.045);
+    }
+
+    .comparison-heading {
+      display: flex;
+      align-items: baseline;
+      justify-content: space-between;
+      gap: 20px;
+      margin-bottom: 13px;
+    }
+
+    .comparison-heading h3 {
+      margin: 0;
+      color: var(--accent);
+      font-size: 20px;
+      line-height: 1.2;
+      font-weight: 740;
+    }
+
+    .llm-result .comparison-heading h3 { color: var(--warning); }
+
+    .comparison-conclusion {
+      color: #5a6673;
+      font-size: 14px;
+      line-height: 1.2;
+      font-weight: 650;
+    }
+
+    .graph-community {
+      display: grid;
+      grid-template-columns: 1fr 28px 1fr;
+      align-items: center;
+      gap: 8px;
+      padding: 13px 15px;
+      border: 1px solid rgba(0, 167, 131, 0.2);
+      background: rgba(255, 255, 255, 0.72);
+    }
+
+    .community-part strong,
+    .split-group strong {
+      display: block;
+      margin-bottom: 4px;
+      color: var(--ink);
+      font-size: 16px;
+      line-height: 1.2;
+    }
+
+    .community-part span,
+    .split-group span {
+      color: #66717e;
+      font-size: 13px;
+      line-height: 1.35;
+    }
+
+    .community-plus {
+      color: var(--accent);
+      font-size: 24px;
+      font-weight: 760;
+      text-align: center;
+    }
+
+    .split-result {
+      display: grid;
+      grid-template-columns: 1fr 42px 1fr;
+      align-items: stretch;
+      gap: 8px;
+    }
+
+    .split-group {
+      padding: 13px 15px;
+      border: 1px dashed rgba(196, 85, 85, 0.48);
+      background: rgba(255, 255, 255, 0.72);
+    }
+
+    .split-group em {
+      display: block;
+      margin-top: 5px;
+      color: var(--warning);
+      font-size: 12px;
+      line-height: 1.25;
+      font-style: normal;
+    }
+
+    .split-mark {
+      display: grid;
+      place-items: center;
+      color: var(--warning);
+      font-size: 24px;
+      font-weight: 760;
+    }
+
+    .importance-layout {
+      display: grid;
+      grid-template-columns: 430px 1fr;
+      gap: 18px;
+      height: 390px;
+      margin-top: 24px;
+    }
+
+    .importance-graph-panel {
+      position: relative;
+      height: 390px;
+      overflow: hidden;
+      border: 0;
+      border-radius: 28px 8px 28px 8px;
+      background:
+        radial-gradient(circle at 55% 48%, rgba(0, 167, 131, 0.12), rgba(0, 167, 131, 0.025) 34%, transparent 58%),
+        linear-gradient(145deg, rgba(245, 249, 248, 0.96), rgba(255, 255, 255, 0.72));
+    }
+
+    .importance-graph {
+      display: block;
+      width: 100%;
+      height: 390px;
+    }
+
+    .importance-graph text {
+      font-family: Inter, "PingFang SC", "Microsoft YaHei", sans-serif;
+    }
+
+    .wiki-results-horizontal {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 12px;
+      height: 390px;
+    }
+
+    .wiki-result-card {
+      display: grid;
+      grid-template-rows: 58px 1fr 35px;
+      height: 390px;
+      overflow: hidden;
+      border: 1px solid rgba(0, 167, 131, 0.24);
+      background: rgba(255, 255, 255, 0.86);
+    }
+
+    .wiki-result-card.llm-wiki {
+      border-color: rgba(196, 85, 85, 0.25);
+    }
+
+    .wiki-result-titlebar {
+      display: block;
+      height: auto;
+      padding: 8px 10px;
+      color: #ffffff;
+      background: var(--accent);
+      font-size: 9px;
+      line-height: 1.42;
+      font-weight: 720;
+    }
+
+    .llm-wiki .wiki-result-titlebar { background: var(--warning); }
+
+    .wiki-result-body {
+      padding: 7px 10px 6px;
+      overflow: hidden;
+    }
+
+    .wiki-result-body h4 {
+      margin: 7px 0 3px;
+      color: var(--accent);
+      font-size: 10.6px;
+      line-height: 1.2;
+      font-weight: 740;
+    }
+
+    .wiki-result-body h4:first-child { margin-top: 0; }
+    .llm-wiki .wiki-result-body h4 { color: var(--warning); }
+
+    .wiki-result-body p {
+      margin: 3px 0;
+      color: #3f4954;
+      font-size: 9.2px;
+      line-height: 1.52;
+    }
+
+    .wiki-result-body ul {
+      margin: 4px 0;
+      padding-left: 14px;
+    }
+
+    .wiki-result-body li {
+      margin: 2px 0;
+      color: #3f4954;
+      font-size: 9.05px;
+      line-height: 1.48;
+    }
+
+    .wiki-result-body code {
+      color: #087b64;
+      font-family: "SFMono-Regular", Consolas, monospace;
+      font-size: 8.3px;
+      font-weight: 650;
+    }
+
+    .llm-wiki .wiki-result-body code { color: #a64343; }
+
+    .wiki-result-body .missing {
+      color: var(--warning);
+      font-style: italic;
+    }
+
+    .wiki-quality-footer {
+      display: flex;
+      align-items: center;
+      padding: 5px 10px;
+      color: #087b64;
+      background: rgba(0, 167, 131, 0.11);
+      font-size: 8.8px;
+      line-height: 1.3;
+      font-weight: 720;
+    }
+
+    .llm-wiki .wiki-quality-footer {
+      color: #a64343;
+      background: rgba(196, 85, 85, 0.11);
+    }
+
+    .repro-layout {
+      display: grid;
+      grid-template-columns: 1fr 2fr;
+      gap: 22px;
+      height: 390px;
+      margin-top: 24px;
+    }
+
+    .graph-repro-result {
+      display: grid;
+      grid-template-rows: 69px 1fr 39px;
+      height: 390px;
+      overflow: hidden;
+      border: 1px solid rgba(0, 167, 131, 0.24);
+      background: rgba(255, 255, 255, 0.9);
+      box-shadow: 0 9px 22px rgba(23, 32, 43, 0.05);
+    }
+
+    .repro-scheme-label {
+      margin: 0;
+      font-size: 16px;
+      line-height: 1.1;
+      font-weight: 720;
+      letter-spacing: 0.02em;
+    }
+
+    .repro-score-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 14px;
+      padding: 12px 17px;
+      color: #ffffff;
+      background: var(--accent);
+    }
+
+    .repro-score {
+      font-size: 31px;
+      line-height: 1;
+      font-weight: 780;
+      letter-spacing: -0.05em;
+    }
+
+    .graph-run-body {
+      display: grid;
+      grid-template-rows: 39px 1fr;
+      min-height: 0;
+      color: var(--ink);
+      background: rgba(255, 255, 255, 0.94);
+    }
+
+    .repro-equality {
+      display: grid;
+      place-items: center;
+      color: #087b64;
+      border-bottom: 1px solid rgba(0, 167, 131, 0.13);
+      font-size: 12.5px;
+      line-height: 1.2;
+      font-weight: 720;
+      text-align: center;
+    }
+
+    .stable-chapter-list {
+      display: grid;
+      align-content: center;
+      gap: 8px;
+      margin: 0;
+      padding: 10px 18px;
+      list-style: none;
+    }
+
+    .stable-chapter-list li {
+      display: grid;
+      grid-template-columns: 26px 1fr;
+      gap: 8px;
+      font-size: 12.5px;
+      line-height: 1.25;
+      color: #37434f;
+    }
+
+    .stable-chapter-list span { color: var(--accent); opacity: 0.8; }
+
+    .repro-efficiency {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 14px;
+      padding: 0 17px;
+      color: #087b64;
+      background: rgba(0, 167, 131, 0.11);
+      font-size: 11.5px;
+      line-height: 1.2;
+      font-weight: 720;
+    }
+
+    .llm-runs {
+      position: relative;
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 14px;
+      height: 390px;
+    }
+
+    .llm-runs::after {
+      content: "≠";
+      position: absolute;
+      top: 30px;
+      left: 50%;
+      z-index: 3;
+      display: grid;
+      place-items: center;
+      width: 34px;
+      height: 34px;
+      border: 4px solid #ffffff;
+      border-radius: 50%;
+      color: #ffffff;
+      background: var(--warning);
+      font-size: 20px;
+      font-weight: 780;
+      transform: translateX(-50%);
+    }
+
+    .llm-run-sheet {
+      display: grid;
+      grid-template-rows: 69px 1fr 39px;
+      height: 390px;
+      overflow: hidden;
+      border: 1px solid rgba(196, 85, 85, 0.22);
+      background: rgba(255, 255, 255, 0.87);
+      box-shadow: 0 9px 22px rgba(23, 32, 43, 0.05);
+    }
+
+    .run-sheet-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 14px;
+      padding: 12px 16px;
+      color: #ffffff;
+      background: #b95353;
+    }
+
+    .llm-run-sheet.second .run-sheet-header { background: #cf6760; }
+
+    .run-sheet-header strong {
+      font-size: 17px;
+      line-height: 1.1;
+      font-weight: 740;
+    }
+
+    .run-sheet-header span {
+      font-size: 30px;
+      line-height: 1;
+      font-weight: 780;
+    }
+
+    .run-differences {
+      display: grid;
+      grid-template-rows: repeat(5, 1fr);
+    }
+
+    .run-difference-row {
+      display: grid;
+      align-content: center;
+      padding: 6px 14px;
+      border-bottom: 1px solid rgba(23, 32, 43, 0.08);
+    }
+
+    .run-difference-row:last-child { border-bottom: 0; }
+
+    .difference-label {
+      margin-bottom: 2px;
+      color: #9a5552;
+      font-size: 9.5px;
+      line-height: 1;
+      font-weight: 740;
+      letter-spacing: 0.08em;
+    }
+
+    .difference-value {
+      color: #333e49;
+      font-size: 11.5px;
+      line-height: 1.28;
+      font-weight: 620;
+    }
+
+    .run-efficiency {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: #984945;
+      background: rgba(196, 85, 85, 0.1);
+      font-size: 11.5px;
+      line-height: 1.2;
+      font-weight: 720;
+    }
+
+    .incremental-layout {
+      display: grid;
+      grid-template-columns: 1fr 2fr;
+      gap: 22px;
+      height: 390px;
+      margin-top: 24px;
+    }
+
+    .wiki-snapshot-card,
+    .incremental-card {
+      display: grid;
+      overflow: hidden;
+      border: 1px solid rgba(23, 32, 43, 0.13);
+      background: rgba(255, 255, 255, 0.9);
+      box-shadow: 0 9px 22px rgba(23, 32, 43, 0.05);
+    }
+
+    .wiki-snapshot-card {
+      grid-template-rows: 58px 1fr 39px;
+      height: 390px;
+    }
+
+    .snapshot-header,
+    .incremental-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 14px;
+      padding: 0 17px;
+      color: #ffffff;
+      background: #566473;
+    }
+
+    .snapshot-header strong,
+    .incremental-header strong {
+      font-size: 17px;
+      line-height: 1.15;
+      font-weight: 740;
+    }
+
+    .snapshot-header span,
+    .incremental-header span {
+      font-size: 11px;
+      line-height: 1.2;
+      font-weight: 660;
+      opacity: 0.9;
+    }
+
+    .snapshot-body {
+      display: grid;
+      grid-template-rows: repeat(3, 1fr);
+      padding: 8px 17px;
+    }
+
+    .snapshot-block {
+      display: grid;
+      align-content: center;
+      border-bottom: 1px solid rgba(23, 32, 43, 0.09);
+    }
+
+    .snapshot-block:last-child { border-bottom: 0; }
+
+    .snapshot-label {
+      margin-bottom: 5px;
+      color: #73808d;
+      font-size: 10px;
+      line-height: 1;
+      font-weight: 740;
+      letter-spacing: 0.09em;
+    }
+
+    .snapshot-value {
+      color: var(--ink);
+      font-size: 25px;
+      line-height: 1.05;
+      font-weight: 770;
+    }
+
+    .snapshot-detail {
+      margin-top: 4px;
+      color: #5c6774;
+      font-size: 11.5px;
+      line-height: 1.3;
+    }
+
+    .snapshot-footer,
+    .incremental-footer {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 0 14px;
+      color: #4e5d6b;
+      background: rgba(86, 100, 115, 0.1);
+      font-size: 11px;
+      line-height: 1.2;
+      font-weight: 720;
+      text-align: center;
+    }
+
+    .incremental-comparison-stack {
+      display: grid;
+      grid-template-rows: 190px 190px;
+      gap: 10px;
+      height: 390px;
+    }
+
+    .incremental-card {
+      grid-template-rows: 44px 1fr 32px;
+      height: 190px;
+    }
+
+    .incremental-card.graph-incremental {
+      border-color: rgba(0, 167, 131, 0.24);
+    }
+
+    .incremental-card.graph-incremental .incremental-header { background: var(--accent); }
+
+    .incremental-card.llm-incremental {
+      border-color: rgba(196, 85, 85, 0.24);
+    }
+
+    .incremental-card.llm-incremental .incremental-header { background: var(--warning); }
+
+    .incremental-body {
+      display: grid;
+      grid-template-columns: 145px 1fr 128px;
+      align-items: stretch;
+      min-height: 0;
+    }
+
+    .incremental-stat {
+      display: grid;
+      place-items: center;
+      align-content: center;
+      padding: 8px 12px;
+      text-align: center;
+    }
+
+    .incremental-stat strong {
+      color: var(--ink);
+      font-size: 27px;
+      line-height: 1;
+      font-weight: 780;
+    }
+
+    .incremental-stat span {
+      margin-top: 5px;
+      color: #6b7784;
+      font-size: 10.5px;
+      line-height: 1.25;
+      font-weight: 650;
+    }
+
+    .incremental-stat:last-child {
+      border-left: 1px solid rgba(23, 32, 43, 0.08);
+    }
+
+    .incremental-details {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 8px;
+      align-content: center;
+      padding: 8px 10px;
+      border-left: 1px solid rgba(23, 32, 43, 0.08);
+    }
+
+    .incremental-detail {
+      padding: 8px 9px;
+      background: rgba(0, 167, 131, 0.055);
+    }
+
+    .llm-incremental .incremental-detail { background: rgba(196, 85, 85, 0.055); }
+
+    .incremental-detail strong {
+      display: block;
+      margin-bottom: 3px;
+      color: #26323d;
+      font-size: 11.5px;
+      line-height: 1.2;
+      font-weight: 740;
+    }
+
+    .incremental-detail span {
+      display: block;
+      color: #66727f;
+      font-size: 9.8px;
+      line-height: 1.3;
+    }
+
+    .graph-incremental .incremental-footer {
+      color: #087b64;
+      background: rgba(0, 167, 131, 0.11);
+    }
+
+    .llm-incremental .incremental-footer {
+      color: #a64343;
+      background: rgba(196, 85, 85, 0.11);
+    }
+
+    .draft-snapshot-body {
+      display: grid;
+      grid-template-rows: 184px 1fr;
+      min-height: 0;
+    }
+
+    .existing-wiki-section {
+      padding: 10px 14px 8px;
+      border-bottom: 1px solid rgba(23, 32, 43, 0.09);
+    }
+
+    .snapshot-section-title {
+      margin: 0 0 7px;
+      color: #586472;
+      font-size: 10px;
+      line-height: 1;
+      font-weight: 740;
+    }
+
+    .chapter-mini-grid {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      column-gap: 10px;
+      row-gap: 2px;
+      margin: 0;
+      padding: 0;
+      list-style: none;
+    }
+
+    .chapter-mini-grid li {
+      color: #4f5b68;
+      font-size: 8.5px;
+      line-height: 1.22;
+      white-space: nowrap;
+    }
+
+    .changed-files-section {
+      padding: 9px 14px;
+      background: rgba(255, 193, 7, 0.065);
+    }
+
+    .changed-file-list {
+      display: grid;
+      gap: 3px;
+      margin: 0;
+      padding: 0;
+      list-style: none;
+    }
+
+    .changed-file-list li {
+      overflow: hidden;
+      color: #56616e;
+      font-family: "SFMono-Regular", Consolas, monospace;
+      font-size: 8.6px;
+      line-height: 1.2;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .changed-file-list li.muted {
+      color: #8a929b;
+      font-family: inherit;
+      font-style: italic;
+    }
+
+    .draft-graph-content {
+      display: grid;
+      grid-template-rows: 24px 1fr 17px;
+      gap: 5px;
+      padding: 7px 12px 5px;
+    }
+
+    .frozen-strip {
+      display: grid;
+      place-items: center;
+      color: #24724b;
+      background: rgba(63, 165, 99, 0.1);
+      font-size: 10px;
+      line-height: 1;
+      font-weight: 740;
+    }
+
+    .graph-change-grid,
+    .llm-issue-grid {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 7px;
+    }
+
+    .graph-change-item {
+      padding: 6px 8px;
+      background: rgba(255, 179, 71, 0.09);
+    }
+
+    .graph-change-item.new-chapter { background: rgba(79, 195, 247, 0.09); }
+
+    .graph-change-item strong,
+    .llm-issue-item strong {
+      display: block;
+      margin-bottom: 2px;
+      color: #2c3742;
+      font-size: 10px;
+      line-height: 1.15;
+      font-weight: 740;
+    }
+
+    .graph-change-item span,
+    .llm-issue-item span {
+      display: block;
+      color: #66727f;
+      font-size: 8.4px;
+      line-height: 1.22;
+    }
+
+    .graph-change-item em,
+    .llm-issue-item em {
+      display: block;
+      margin-top: 2px;
+      color: #087b64;
+      font-size: 8.3px;
+      line-height: 1.2;
+      font-style: normal;
+    }
+
+    .graph-stability-note {
+      display: grid;
+      place-items: center;
+      color: #087b64;
+      font-size: 9px;
+      line-height: 1;
+      font-weight: 690;
+    }
+
+    .draft-llm-content {
+      padding: 7px 12px;
+    }
+
+    .llm-issue-grid {
+      height: 100%;
+      grid-template-rows: repeat(2, minmax(0, 1fr));
+    }
+
+    .llm-issue-item {
+      padding: 5px 8px;
+      background: rgba(196, 85, 85, 0.055);
+    }
+
+    .llm-issue-item strong,
+    .llm-issue-item em { color: #a64343; }
+
+    .retrieval-experiment-grid {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 18px;
+      height: 390px;
+      margin-top: 24px;
+    }
+
+    .usecase-card {
+      --case-color: var(--accent);
+      --case-tint: rgba(0, 167, 131, 0.11);
+      display: grid;
+      grid-template-rows: 68px 1fr 44px;
+      height: 390px;
+      overflow: hidden;
+      border: 1px solid color-mix(in srgb, var(--case-color) 24%, transparent);
+      background: rgba(255, 255, 255, 0.9);
+      box-shadow: 0 9px 22px rgba(23, 32, 43, 0.05);
+    }
+
+    .usecase-card.vector-case {
+      --case-color: #3f7eb8;
+      --case-tint: rgba(63, 126, 184, 0.11);
+    }
+
+    .usecase-card.structure-case {
+      --case-color: #745ca8;
+      --case-tint: rgba(116, 92, 168, 0.11);
+    }
+
+    .usecase-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 14px;
+      padding: 0 17px;
+      color: #ffffff;
+      background: var(--case-color);
+    }
+
+    .usecase-title strong {
+      display: block;
+      font-size: 19px;
+      line-height: 1.1;
+      font-weight: 750;
+    }
+
+    .usecase-title span {
+      display: block;
+      margin-top: 4px;
+      font-size: 10px;
+      line-height: 1;
+      font-weight: 640;
+      opacity: 0.86;
+    }
+
+    .usecase-index {
+      font-size: 27px;
+      line-height: 1;
+      font-weight: 780;
+      opacity: 0.75;
+    }
+
+    .usecase-body {
+      display: grid;
+      grid-template-rows: auto 1fr auto;
+      gap: 12px;
+      min-height: 0;
+      padding: 14px 16px 12px;
+    }
+
+    .usecase-query {
+      margin: 0;
+      color: #27333e;
+      font-size: 15px;
+      line-height: 1.38;
+      font-weight: 700;
+    }
+
+    .usecase-comparison {
+      display: grid;
+      grid-template-rows: repeat(2, minmax(0, 1fr));
+      gap: 8px;
+    }
+
+    .comparison-row {
+      display: grid;
+      grid-template-columns: 80px 1fr;
+      align-items: center;
+      gap: 6px;
+      padding: 9px 8px;
+      border-left: 4px solid var(--case-color);
+      background: var(--case-tint);
+    }
+
+    .comparison-row.without {
+      border-left-color: #a6afb9;
+      background: rgba(117, 129, 145, 0.075);
+    }
+
+    .comparison-row strong {
+      color: #2e3a45;
+      font-size: 11.5px;
+      line-height: 1.2;
+      font-weight: 740;
+    }
+
+    .comparison-row.with-neug strong,
+    .comparison-row.with-neug .metric-line { color: var(--case-color); }
+
+    .comparison-row.without strong,
+    .comparison-row.without .metric-line { color: #a64343; }
+
+    .metric-line {
+      font-size: 11.5px;
+      line-height: 1.2;
+      font-weight: 650;
+      letter-spacing: -0.012em;
+      white-space: nowrap;
+    }
+
+    .metric-number {
+      font-size: 16px;
+      line-height: 1;
+      font-weight: 820;
+      font-variant-numeric: tabular-nums;
+      vertical-align: -1px;
+    }
+
+    .usecase-result {
+      margin: 0;
+      color: #5a6673;
+      font-size: 11.5px;
+      line-height: 1.38;
+    }
+
+    .usecase-result strong { color: var(--case-color); }
+
+    .usecase-footer {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 0 14px;
+      color: var(--case-color);
+      background: var(--case-tint);
+      font-size: 11px;
+      line-height: 1.3;
+      font-weight: 740;
+      text-align: center;
+    }
+
+    .retrieval-summary-layout {
+      display: grid;
+      grid-template-rows: 132px 240px;
+      gap: 18px;
+      height: 390px;
+      margin-top: 24px;
+    }
+
+    .performance-panel,
+    .function-panel {
+      display: grid;
+      overflow: hidden;
+      border: 1px solid rgba(0, 167, 131, 0.22);
+      border-radius: 12px 4px 12px 4px;
+      background: rgba(255, 255, 255, 0.9);
+      box-shadow: 0 12px 28px rgba(23, 32, 43, 0.06);
+    }
+
+    .performance-panel { grid-template-rows: 38px 1fr 28px; }
+    .function-panel {
+      grid-template-rows: 38px 1fr 28px;
+      border-color: rgba(86, 100, 115, 0.2);
+    }
+
+    .summary-section-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 18px;
+      padding: 0 17px;
+      color: #ffffff;
+      background: var(--accent);
+    }
+
+    .function-panel .summary-section-header { background: #566473; }
+
+    .summary-section-header strong {
+      font-size: 17px;
+      line-height: 1.1;
+      font-weight: 750;
+    }
+
+    .summary-section-header span {
+      font-size: 10.5px;
+      line-height: 1.1;
+      font-weight: 650;
+      opacity: 0.88;
+    }
+
+    .performance-grid {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+    }
+
+    .performance-metric {
+      position: relative;
+      display: grid;
+      grid-template-columns: 1fr auto;
+      align-items: center;
+      gap: 12px;
+      padding: 9px 17px;
+      border-right: 1px solid rgba(23, 32, 43, 0.09);
+      background: linear-gradient(180deg, rgba(0, 167, 131, 0.025), transparent 74%);
+    }
+
+    .performance-metric::after {
+      content: "";
+      position: absolute;
+      left: 17px;
+      bottom: 7px;
+      width: 34px;
+      height: 2px;
+      border-radius: 999px;
+      background: rgba(0, 167, 131, 0.42);
+    }
+
+    .performance-metric:last-child { border-right: 0; }
+
+    .performance-name {
+      display: block;
+      margin-bottom: 4px;
+      color: #45515d;
+      font-size: 11px;
+      line-height: 1.1;
+      font-weight: 740;
+    }
+
+    .performance-values {
+      color: #697582;
+      font-size: 10.5px;
+      line-height: 1.32;
+    }
+
+    .performance-values b {
+      color: #087b64;
+      font-size: 14.5px;
+      font-weight: 780;
+    }
+
+    .performance-reduction {
+      color: var(--accent);
+      font-size: 26px;
+      line-height: 1;
+      font-weight: 810;
+      letter-spacing: -0.035em;
+    }
+
+    .performance-reduction small {
+      display: block;
+      margin-top: 4px;
+      color: #6d7986;
+      font-size: 8.5px;
+      line-height: 1;
+      font-weight: 700;
+      letter-spacing: 0.08em;
+      text-align: center;
+    }
+
+    .summary-section-footer {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 0 14px;
+      color: #087b64;
+      background: rgba(0, 167, 131, 0.1);
+      font-size: 10px;
+      line-height: 1.2;
+      font-weight: 720;
+      text-align: center;
+    }
+
+    .function-panel .summary-section-footer {
+      color: #4f5d6b;
+      background: rgba(86, 100, 115, 0.1);
+    }
+
+    .function-table {
+      width: 100%;
+      height: 100%;
+      border-collapse: collapse;
+      table-layout: fixed;
+    }
+
+    .function-table col:first-child { width: 14%; }
+    .function-table col:nth-child(2) { width: 16%; }
+    .function-table col:nth-child(3) { width: 20%; }
+    .function-table col:nth-child(4) { width: 13%; }
+    .function-table col:nth-child(5) { width: 22%; }
+    .function-table col:nth-child(6) { width: 15%; }
+
+    .function-table th,
+    .function-table td {
+      padding: 6px 9px;
+      border-right: 1px solid rgba(23, 32, 43, 0.08);
+      border-bottom: 1px solid rgba(23, 32, 43, 0.08);
+      color: #4d5966;
+      font-size: 11.2px;
+      line-height: 1.26;
+      text-align: center;
+      vertical-align: middle;
+    }
+
+    .function-table th:last-child,
+    .function-table td:last-child { border-right: 0; }
+    .function-table tbody tr:last-child td { border-bottom: 0; }
+
+    .function-table thead th {
+      color: #34404c;
+      background: linear-gradient(180deg, rgba(86, 100, 115, 0.1), rgba(86, 100, 115, 0.055));
+      font-weight: 760;
+    }
+
+    .function-table tbody td:first-child {
+      color: #34404c;
+      font-size: 11.7px;
+      font-weight: 750;
+    }
+
+    .function-table tbody tr:first-child td:first-child { border-left: 5px solid #8995a2; }
+    .function-table tbody tr:nth-child(2) td:first-child { border-left: 5px solid #3f7eb8; color: #356e9f; }
+    .function-table tbody tr:nth-child(3) td:first-child { border-left: 5px solid var(--accent); }
+
+    .function-table tbody tr:nth-child(2) td { background: rgba(63, 126, 184, 0.025); }
+
+    .function-table tbody tr:not(:last-child) td:nth-child(3) {
+      color: #a64343;
+      font-size: 16px;
+      font-weight: 820;
+    }
+
+    .extra-capabilities-layout {
+      display: grid;
+      grid-template-rows: 185px 185px;
+      gap: 20px;
+      height: 390px;
+      margin-top: 24px;
+    }
+
+    .capability-block {
+      --block-color: var(--accent);
+      --block-tint: rgba(0, 167, 131, 0.1);
+      display: grid;
+      grid-template-rows: 43px 1fr 30px;
+      height: 185px;
+      overflow: hidden;
+      border: 1px solid color-mix(in srgb, var(--block-color) 24%, transparent);
+      border-radius: 12px 4px 12px 4px;
+      background: rgba(255, 255, 255, 0.9);
+      box-shadow: 0 10px 24px rgba(23, 32, 43, 0.05);
+    }
+
+    .capability-block.edge-cloud {
+      --block-color: #3f7eb8;
+      --block-tint: rgba(63, 126, 184, 0.1);
+    }
+
+    .capability-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 18px;
+      padding: 0 18px;
+      color: #ffffff;
+      background: var(--block-color);
+    }
+
+    .capability-header strong {
+      font-size: 18px;
+      line-height: 1.1;
+      font-weight: 750;
+    }
+
+    .capability-header span {
+      font-size: 10.5px;
+      line-height: 1.1;
+      font-weight: 650;
+      opacity: 0.88;
+    }
+
+    .remote-capability-body {
+      display: grid;
+      grid-template-columns: 0.72fr 1.28fr;
+      align-items: stretch;
+    }
+
+    .remote-description {
+      display: grid;
+      align-content: center;
+      gap: 8px;
+      padding: 12px 20px;
+      border-right: 1px solid rgba(23, 32, 43, 0.08);
+    }
+
+    .remote-description strong {
+      color: var(--ink);
+      font-size: 18px;
+      line-height: 1.2;
+      font-weight: 750;
+    }
+
+    .remote-description p {
+      margin: 0;
+      color: #596572;
+      font-size: 12px;
+      line-height: 1.42;
+    }
+
+    .sql-examples {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 10px;
+      align-content: center;
+      padding: 10px 14px;
+    }
+
+    .sql-example {
+      padding: 10px 12px;
+      border-left: 4px solid var(--block-color);
+      background: rgba(0, 167, 131, 0.055);
+    }
+
+    .sql-example span {
+      display: block;
+      margin-bottom: 6px;
+      color: #087b64;
+      font-size: 10px;
+      line-height: 1;
+      font-weight: 740;
+    }
+
+    .sql-example code {
+      color: #35414c;
+      font-family: "SFMono-Regular", Consolas, monospace;
+      font-size: 9.4px;
+      line-height: 1.42;
+      white-space: normal;
+    }
+
+    .capability-footer {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 0 14px;
+      color: var(--block-color);
+      background: var(--block-tint);
+      font-size: 10.5px;
+      line-height: 1.2;
+      font-weight: 720;
+      text-align: center;
+    }
+
+    .edge-cloud-body {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+    }
+
+    .capability-axis {
+      display: grid;
+      grid-template-rows: 25px 1fr;
+      padding: 9px 15px 8px;
+    }
+
+    .capability-axis:first-child { border-right: 1px solid rgba(23, 32, 43, 0.08); }
+
+    .axis-title {
+      color: #607080;
+      font-size: 10px;
+      line-height: 1;
+      font-weight: 740;
+      letter-spacing: 0.1em;
+    }
+
+    .axis-options {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 10px;
+    }
+
+    .axis-option {
+      padding: 8px 11px;
+      border-top: 3px solid var(--block-color);
+      background: rgba(63, 126, 184, 0.05);
+    }
+
+    .axis-option strong {
+      display: block;
+      margin-bottom: 4px;
+      color: #2f3b46;
+      font-size: 15px;
+      line-height: 1.1;
+      font-weight: 750;
+    }
+
+    .axis-option p {
+      margin: 0;
+      color: #5d6976;
+      font-size: 10.5px;
+      line-height: 1.36;
+    }
+
+    .function-table tbody tr:last-child td {
+      color: #087b64;
+      font-weight: 670;
+      background: rgba(0, 167, 131, 0.045);
+    }
+
+    .title-slide::before {
+      content: "";
+      position: absolute;
+      top: 152px;
+      left: 104px;
+      width: 76px;
+      height: 6px;
+      border-radius: 999px;
+      background: var(--accent);
+    }
+
+    .hero-title {
+      position: absolute;
+      left: 104px;
+      top: 216px;
+      width: 1072px;
+      margin: 0;
+      font-size: 72px;
+      line-height: 1.19;
+      letter-spacing: -0.035em;
+      font-weight: 720;
+      text-wrap: balance;
+    }
+
+    .hero-title .brand { color: var(--accent); }
+
+    .page-mark {
+      position: absolute;
+      right: 104px;
+      bottom: 70px;
+      color: var(--muted);
+      font-size: 16px;
+      font-variant-numeric: tabular-nums;
+      letter-spacing: 0.12em;
+    }
+
+    @media print {
+      html,
+      body {
+        width: 1280px;
+        height: 720px;
+        background: #fff;
+      }
+
+      .stage { display: block; }
+      .deck { transform: none !important; box-shadow: none; }
+      .slide { position: relative; display: block; break-after: page; }
+      .deck-controls { display: none; }
+    }
+  </style>
 </head>
 <body>
-<div class="reveal"><div class="slides">
+  <main class="stage" aria-label="NeuG wiki 演示文稿">
+    <div class="deck" id="deck">
+      <section class="slide title-slide is-active" data-slide="1" aria-label="首页">
+        <h1 class="hero-title">
+          <span class="brand">NeuG</span> 图数据库：<br />
+          驱动 wiki 的构建、维护与检索
+        </h1>
+        <div class="page-mark" aria-hidden="true">01</div>
+      </section>
 
-<!-- 1. Title -->
-<section>
-  <h1>wiki生成与维护：图能做什么</h1>
-  <p class="title-sub">用图算法提供概念依据，用增量引擎保证更新又快又准</p>
-  <p class="dim small" style="margin-top: 2em;">graphify · neug · wiki</p>
-</section>
+      <section class="slide content-slide" data-slide="2" aria-label="背景：知识库的三个挑战">
+        <p class="slide-kicker">背景</p>
+        <h2 class="slide-title">知识库面临的三个挑战</h2>
+        <p class="build-question">知识库将分散的信息组织成结构化的概念文档，为团队理解和 AI 辅助开发提供基础。</p>
 
-<!-- 2. Background: LLM-wiki pattern -->
-<section>
-  <span class="section-number">01 / 背景</span>
-  <h2>LLM-wiki pattern</h2>
-  <p class="dim">Andrej Karpathy 提出的一种用 LLM 持续维护知识库的模式</p>
-  <ul>
-    <li>不只是提问时检索（RAG），而是<span class="green">持续维护</span>一个结构化 wiki</li>
-    <li><span class="warn">首次构建</span>需要 LLM 全量读取原始内容，消耗大量 tokens</li>
-    <li>之后每次加入新内容，<span class="accent">增量更新</span>受影响的页面</li>
-    <li>维护交叉引用、更新摘要、标注矛盾——bookkeeping 由 LLM 完成</li>
-  </ul>
-  <p class="dim small" style="margin-top: 1em;">知识是"编译一次、持续更新"的。在个人知识库场景下，规模小，这套流程够用。</p>
-</section>
+        <div style="display: flex; align-items: center; gap: 24px; margin-top: 28px;" aria-label="知识来源分散，汇聚成知识库">
+          <div style="display: flex; gap: 12px; flex-wrap: wrap; max-width: 660px;">
+            <span style="padding: 9px 16px; border: 1.5px solid #d5dbe2; border-radius: 999px; background: #fff; font-size: 16px; color: #4d5866; white-space: nowrap;">📄 内部文档</span>
+            <span style="padding: 9px 16px; border: 1.5px solid #d5dbe2; border-radius: 999px; background: #fff; font-size: 16px; color: #4d5866; white-space: nowrap;">🌐 网上技术资料</span>
+            <span style="padding: 9px 16px; border: 1.5px solid #d5dbe2; border-radius: 999px; background: #fff; font-size: 16px; color: #4d5866; white-space: nowrap;">💻 代码仓库</span>
+            <span style="padding: 9px 16px; border: 1.5px solid #d5dbe2; border-radius: 999px; background: #fff; font-size: 16px; color: #4d5866; white-space: nowrap;">💬 聊天记录</span>
+            <span style="padding: 9px 16px; border: 1.5px solid #d5dbe2; border-radius: 999px; background: #fff; font-size: 16px; color: #4d5866; white-space: nowrap;">📧 邮件</span>
+          </div>
+          <span style="font-size: 26px; color: var(--accent); font-weight: 700;" aria-hidden="true">→</span>
+          <div style="padding: 12px 24px; border: 2px solid var(--accent); border-radius: 14px; background: rgba(0, 167, 131, 0.08); font-size: 19px; font-weight: 720; color: var(--accent); white-space: nowrap;">📚 知识库</div>
+        </div>
 
-<!-- 4. Problem: scale -->
-<section>
-  <span class="section-number">02 / 问题</span>
-  <h2>规模变大后，结构性问题浮现</h2>
-  <p>当内容源变大、变复杂——代码仓库几百个文件，企业知识库上千篇文档——</p>
-  <p>核心问题是：<span class="warn">谁来决定"概念边界"？</span></p>
-  <p class="dim">LLM 读了内容，自己决定怎么组织页面。这个判断完全依赖 LLM 的主观理解。</p>
-</section>
+        <p class="build-question" style="margin-top: 26px;">然而，构建、维护和检索高质量的知识库，始终面临三个核心挑战：</p>
 
-<!-- 5. Problem 1 -->
-<section>
-  <span class="section-number">02 / 问题</span>
-  <h3 class="warn">问题一：概念归属不稳定</h3>
-  <ul>
-    <li>同一组内容，LLM 这次分成三篇，下次合成一篇</li>
-    <li>不是 LLM 能力不行，而是<span class="warn">没有结构依据</span>——在读文本，不在读"关系"</li>
-    <li>概念边界在每次 ingest 时都可能<span class="warn">漂移</span></li>
-  </ul>
-</section>
+        <section class="background-column" style="margin-top: 26px; max-width: 860px;" aria-label="知识库的三个挑战">
+          <ol class="challenge-list">
+            <li class="challenge-item">
+              <span class="challenge-number">1</span>
+              <p class="challenge-copy"><strong>构建：</strong>数据分散且杂乱，概念边界难以自动发现与聚合</p>
+            </li>
+            <li class="challenge-item">
+              <span class="challenge-number">2</span>
+              <p class="challenge-copy"><strong>维护：</strong>文档持续变化，难以精确定位受影响的 wiki 文章</p>
+            </li>
+            <li class="challenge-item">
+              <span class="challenge-number">3</span>
+              <p class="challenge-copy"><strong>检索：</strong>文本只能匹配关键词，无法回答结构化关系问题</p>
+            </li>
+          </ol>
+        </section>
+        <div class="page-mark" aria-hidden="true">02</div>
+      </section>
 
-<!-- 6. Problem 2 -->
-<section>
-  <span class="section-number">02 / 问题</span>
-  <h3 class="warn">问题二：变更影响范围不一定准确</h3>
-  <ul>
-    <li>加了一个新源，LLM 需要判断"这会影响哪些已有 wiki 页面"</li>
-    <li>读了新源，再扫已有页面看哪些相关</li>
-    <li>这个"猜"的过程本身<span class="warn">消耗 tokens</span>，而且可能不准确</li>
-  </ul>
-</section>
+      <section class="slide content-slide" data-slide="3" aria-label="背景：LLM-Wiki 的痛点与 NeuG 方案">
+        <p class="slide-kicker">背景</p>
+        <h2 class="slide-title">LLM-Wiki 方案</h2>
+        <p class="build-question">当前主流做法是让 LLM 阅读全部源代码并直接生成 wiki 文档。然而，LLM-Wiki 在构建、维护和检索三个环节都存在根本性痛点：</p>
 
-<!-- 7. Problem 3 -->
-<section>
-  <span class="section-number">02 / 问题</span>
-  <h3 class="warn">问题三：没有质量指标</h3>
-  <ul>
-    <li>一个概念的内聚度够不够？</li>
-    <li>两个概念之间有没有意想不到的关联？</li>
-    <li>当前概念里，最相关的文件是哪些？</li>
-  </ul>
-  <p style="margin-top: 1em;">这些在文本层面<span class="warn">看不出来</span>，需要图结构才能算。</p>
-</section>
+        <section class="background-column llm" style="margin-top: 40px; max-width: 860px;" aria-label="LLM-Wiki 的痛点">
+          <ol class="challenge-list">
+            <li class="challenge-item">
+              <span class="challenge-number">1</span>
+              <p class="challenge-copy"><strong>构建不稳定：</strong>概念边界随模型理解漂移，结果不可复现</p>
+            </li>
+            <li class="challenge-item">
+              <span class="challenge-number">2</span>
+              <p class="challenge-copy"><strong>更新不精确：</strong>难判断间接影响，容易遗漏或过度更新</p>
+            </li>
+            <li class="challenge-item">
+              <span class="challenge-number">3</span>
+              <p class="challenge-copy"><strong>检索无结构：</strong>向量只能找“相似”，无法查询调用、依赖与拓扑</p>
+            </li>
+          </ol>
+        </section>
 
-<!-- 7.5. Example: LLM -->
-<section>
-  <span class="section-number">02 / 示例</span>
-  <h3 class="warn">示例：LLM 直接处理 neug repo</h3>
-  <table style="font-size: 0.7em;">
-    <tr><td class="dim">项目规模</td><td>1,642 个源文件</td></tr>
-    <tr><td class="dim">增量变更</td><td>47 文件改动，+14,243 行（新增 pattern matching 模块）</td></tr>
-  </table>
-  <table style="font-size: 0.7em; margin-top: 0.5em;">
-    <tr><td class="dim">全量构建</td><td>读 1,642 个文件 → <span class="warn">百万级 tokens</span></td></tr>
-    <tr><td class="dim">增量更新</td><td>读 47 个变更文件 → tokens 少了</td></tr>
-  </table>
-  <p style="margin-top: 1em;"><span class="warn">但：</span>哪些 wiki 页面受影响？靠 LLM 猜</p>
-  <ul>
-    <li>LLM 只读 47 个变更文件，<span class="warn">不确定新增的信息间接影响</span>哪些 wiki 页面</li>
-    <li>已有模块的 wiki 的内容过期了，说的还是旧信息 → <span class="warn">知识腐化</span></li>
-  </ul>
-</section>
+        <aside class="neug-advantage" aria-label="NeuG 的优势">
+          <p class="advantage-title"><span class="brand">NeuG</span> 将知识库的构建、维护、检索纳入统一的图数据库管理</p>
+          <p class="advantage-detail">图算法发现边界<br />图查询计算影响<br />图索引统一检索</p>
+        </aside>
+        <div class="page-mark" aria-hidden="true">03</div>
+      </section>
 
-<!-- 8. Solution: graph -->
-<section>
-  <span class="section-number">03 / 解法</span>
-  <h2>用图提供结构依据</h2>
-  <p>在 LLM 和原始内容之间加一层图</p>
-  <div style="margin: 1em 0;">
-    <span class="flow-box">原始内容</span>
-    <span class="flow-arrow">→</span>
-    <span class="flow-box" style="border-color: var(--accent2);">图数据库</span>
-    <span class="flow-arrow">→</span>
-    <span class="flow-box">概念组（图算法确定）</span>
-    <span class="flow-arrow">→</span>
-    <span class="flow-box">LLM 命名 + 写 wiki</span>
-  </div>
-  <p class="dim small">概念边界由算法确定，不依赖 LLM 主观判断——确定性、可复现、不漂移</p>
-</section>
+      <section class="slide content-slide" data-slide="4" aria-label="一、构建 wiki">
+        <p class="slide-kicker">一、构建 wiki</p>
+        <h2 class="slide-title">直接让 LLM 构建 wiki，三个关键环节都不可靠</h2>
+        <p class="build-question">NeuG Repo 的<strong>1,359 个源文件</strong>直接交给 LLM 阅读并生成 wiki，会遇到哪些根本问题？</p>
 
-<!-- 9. Graph benefits -->
-<section>
-  <span class="section-number">03 / 解法</span>
-  <h2>解法：Graphify</h2>
-  <ul>
-    <li><span class="green">概念归并用 <code>Leiden/Louvain</code> 聚类算法</span>：根据节点间实际关系计算，不是 LLM 猜的</li>
-    <li><span class="green">wiki 有质量指标</span>：内聚度、跨概念连接、枢纽节点——图结构天然给出</li>
-    <li><span class="green">LLM 只做理解和表达</span>：给它一个已确定的概念组，让它命名、写文章，而不是同时决定"怎么分"和"写什么"</li>
-  </ul>
-</section>
+        <div class="build-grid" aria-label="LLM 痛点与 NeuG 解决方案对照">
+          <div class="build-column">
+            <article class="build-card problem">
+              <p class="build-card-label">痛点 01</p>
+              <h3 class="build-card-title">概念边界不准确</h3>
+              <p class="build-card-copy">LLM 倾向按目录分章，但目录结构并不等于概念结构</p>
+            </article>
+            <div class="build-flow-arrow" aria-hidden="true">↓</div>
+            <article class="build-card solution">
+              <p class="build-card-label">NeuG 方案</p>
+              <h3 class="build-card-title">Leiden 发现概念边界</h3>
+              <p class="build-card-copy">依据调用与引用关系聚类，让跨目录的相关文件自然归组</p>
+            </article>
+          </div>
 
-<!-- 10.5. Example: Graphify (全量) -->
-<section>
-  <span class="section-number">04 / 示例</span>
-  <h3>示例：Graphify 全量聚类 — 优势</h3>
-  <table style="font-size: 0.7em;">
-    <tr><td class="dim">图规模</td><td>28,928 节点 · 52,501 边 · 1,642 源文件</td></tr>
-    <tr><td class="dim">全量聚类结果</td><td>2,553 个概念组</td></tr>
-  </table>
-  <div style="margin-top: 1em;">
-    <p><span class="green">LLM 只需理解 2,553 个概念组</span></p>
-    <p class="dim small">不用读 1,642 个源文件，还要靠自己给他们做概念分类</p>
-    <p style="margin-top: 0.8em;">tokens 从 <span class="warn">O(N)</span> （N是指原来 1,642 个源文件里所有的内容）降到 <span class="green">O(K)</span></p>（K是 2,553 个概念组）
-  </div>
-</section>
+          <div class="build-column">
+            <article class="build-card problem">
+              <p class="build-card-label">痛点 02</p>
+              <h3 class="build-card-title">找不到关键文件</h3>
+              <p class="build-card-copy">依赖文件名启发式选择，容易偏向短名 header 与边缘文件</p>
+            </article>
+            <div class="build-flow-arrow" aria-hidden="true">↓</div>
+            <article class="build-card solution">
+              <p class="build-card-label">NeuG 方案</p>
+              <h3 class="build-card-title">PageRank 识别核心文件</h3>
+              <p class="build-card-copy">按全局引用度排序，为每个概念组定位真正重要的入口文件</p>
+            </article>
+          </div>
 
-<!-- 10. New problem -->
-<section>
-  <span class="section-number">04 / 新问题</span>
-  <h2>但图也要更新</h2>
-  <p>内容变了，图要跟着变，概念归组也可能变化。</p>
-  <p style="margin-top: 1em;">如果全量重建图 + 全量重新归组：</p>
-  <ul>
-    <li><span class="warn">重建成本</span>吃掉了结构优势</li>
-    <li>重新归组的结果<span class="warn">不稳定</span>，概念编号会漂移，出现大量假阳结果</li>
-  </ul>
-</section>
+          <div class="build-column">
+            <article class="build-card problem">
+              <p class="build-card-label">痛点 03</p>
+              <h3 class="build-card-title">结果不可复现</h3>
+              <p class="build-card-copy">每次运行的分组边界和文件选择都可能发生漂移</p>
+            </article>
+            <div class="build-flow-arrow" aria-hidden="true">↓</div>
+            <article class="build-card solution">
+              <p class="build-card-label">NeuG 方案</p>
+              <h3 class="build-card-title">确定性算法稳定复现</h3>
+              <p class="build-card-copy">相同的图得到相同的聚类与排序，结果 100% 可复现</p>
+            </article>
+          </div>
+        </div>
+        <div class="page-mark" aria-hidden="true">04</div>
+      </section>
 
-<!-- 10.6. Example: Graphify (增量) -->
-<section>
-  <span class="section-number">04 / 示例</span>
-  <h3 class="warn">示例：Graphify 全量聚类 — 增量不足</h3>
-  <table style="font-size: 0.7em;">
-    <tr><td class="dim">增量变更</td><td>47 文件改动，+14,243 行</td></tr>
-  </table>
-  <ul style="margin-top: 0.8em;">
-    <li>全量重新跑 Leiden → 旧 2,438 vs 新 2,553</li>
-    <li><span class="warn">community ID 会漂移</span>，无法直观 diff 两个 3K 行 JSON</li>
-    <li>只能<span class="warn">全量重新 LLM labeling</span> → 所有概念组重新命名</li>
-  </ul>
-  <p class="dim small" style="margin-top: 1em;">有图算法确定概念边界，但缺少增量能力，更新成本仍是 O(K) 全量。</p>
-</section>
+      <section class="slide content-slide" data-slide="5" aria-label="实验结果一：跨目录聚合能力">
+        <p class="slide-kicker">实验结果一：跨目录聚合能力</p>
+        <h2 class="slide-title">概念边界由关系决定，而不是由目录决定</h2>
+        <p class="experiment-intro">典型社区 <strong>type-and-value-system</strong> 包含 187 个文件、跨 6 个路径前缀；下图用 6 个代表元素呈现两种方案的差异。</p>
 
-<!-- 11. neug overview -->
-<section>
-  <span class="section-number">05 / 解法</span>
-  <h2>neug 提供三层增量能力</h2>
-  <div style="margin: 1em 0;">
-    <span class="tag tag-blue">freeze-assign Leiden</span>
-    <span class="tag tag-green">Cypher 变更检测</span>
-    <span class="tag tag-warn">COPY TEMP 临时图</span>
-  </div>
-  <ul>
-    <li><span class="accent">增量归组</span>：已有概念组冻结，只分配新内容</li>
-    <li><span class="green">变更检测</span>：Cypher group by 精确计算社区级变化</li>
-    <li><span class="warn">临时图计算</span>：增量分析不污染原图</li>
-  </ul>
-</section>
+        <div class="cross-directory-diagram" aria-label="图方案与 LLM 方案的跨目录聚合对比">
+          <section class="directory-panel" aria-label="原始目录结构">
+            <p class="diagram-label">原始目录结构</p>
+            <ul class="directory-tree">
+              <li><span class="folder">compiler/</span>
+                <ul>
+                  <li><span class="folder">common/</span>
+                    <ul>
+                      <li><span class="folder">types/</span>
+                        <ul>
+                          <li><span class="file">types.h</span></li>
+                          <li><span class="file">timestamp_t.h</span></li>
+                          <li><span class="file">value.h</span></li>
+                          <li><span class="file">value_vector.h</span></li>
+                        </ul>
+                      </li>
+                    </ul>
+                  </li>
+                  <li><span class="folder">function/</span>
+                    <ul>
+                      <li><span class="operation">cast/</span></li>
+                      <li><span class="operation">comparison/</span></li>
+                    </ul>
+                  </li>
+                </ul>
+              </li>
+            </ul>
+          </section>
 
-<!-- 12. neug 1: freeze-assign -->
-<section>
-  <span class="section-number">05 / 解法</span>
-  <h3>1. 增量归组（freeze-assign Leiden）</h3>
-  <div style="display: flex; gap: 2em; align-items: flex-start;">
-    <div style="flex: 1;">
-      <ul>
-        <li>已有概念组<span class="green">保持不变</span>，只对新增内容分配概念组</li>
-        <li>不只是快——更重要的是<span class="green">概念稳定性</span></li>
-        <li>原来叫"compiler"的概念，增量后还是"compiler"。不漂移，可 diff</li>
-      </ul>
-      <p class="dim small" style="margin-top: 1em;">对比 LLM：每次 ingest 都可能重新理解组织结构。freeze-assign 给了结构层面的稳定性保证。</p>
+          <div class="diagram-arrows" aria-hidden="true">
+            <span>→</span>
+            <span>→</span>
+          </div>
+
+          <div class="comparison-stack">
+            <section class="comparison-panel graph-result" aria-label="图方案结果">
+              <div class="comparison-heading">
+                <h3>图方案 · Leiden 聚类</h3>
+                <span class="comparison-conclusion">跨目录识别 → 1 个概念</span>
+              </div>
+              <div class="graph-community">
+                <div class="community-part">
+                  <strong>Type System and Value Representation</strong>
+                  <span>types.h · timestamp_t.h · value.h · value_vector.h<br />function/cast/ · function/comparison/</span>
+                </div>
+              </div>
+            </section>
+
+            <section class="comparison-panel llm-result" aria-label="LLM 方案结果">
+              <div class="comparison-heading">
+                <h3>LLM 方案 · 按目录推断</h3>
+                <span class="comparison-conclusion">同一内容 → 分裂为 2 个章节</span>
+              </div>
+              <div class="split-result">
+                <div class="split-group">
+                  <strong>common-types</strong>
+                  <span>types.h · timestamp_t.h<br />value.h · value_vector.h</span>
+                  <em>按 common/ 目录归类</em>
+                </div>
+                <div class="split-mark">×</div>
+                <div class="split-group">
+                  <strong>built-in-functions</strong>
+                  <span>cast/ · comparison/</span>
+                  <em>误标：值操作被当作函数</em>
+                </div>
+              </div>
+            </section>
+          </div>
+        </div>
+        <div class="page-mark" aria-hidden="true">05</div>
+      </section>
+
+      <section class="slide content-slide" data-slide="6" aria-label="实验结果二：文件重要性排序">
+        <p class="slide-kicker">实验结果二：文件重要性排序</p>
+        <h2 class="slide-title">选对核心文件，才能生成覆盖架构的 wiki</h2>
+        <p class="experiment-intro">同一 <strong>cypher-parser</strong> 章节各选 Top-5 文件：PageRank 按全局引用度排序，LLM 按文件名启发式选择，<strong>Top-5 重合率为 0%</strong>。</p>
+
+        <div class="importance-layout" aria-label="文件重要性选择与 wiki 生成质量对比">
+          <section class="importance-graph-panel" aria-label="文件引用关系图">
+            <svg class="importance-graph" viewBox="0 0 430 390" role="img" aria-label="PageRank 选择中心枢纽，LLM 选择外围文件">
+              <defs>
+                <filter id="hubShadow" x="-40%" y="-40%" width="180%" height="180%">
+                  <feDropShadow dx="0" dy="8" stdDeviation="8" flood-color="#087b64" flood-opacity="0.17"></feDropShadow>
+                </filter>
+                <marker id="importanceArrow" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto">
+                  <path d="M0,0 L8,4 L0,8" fill="#00a783" opacity="0.78"></path>
+                </marker>
+                <marker id="importanceArrowGray" markerWidth="7" markerHeight="7" refX="6" refY="3.5" orient="auto">
+                  <path d="M0,0 L7,3.5 L0,7" fill="#aeb6bf"></path>
+                </marker>
+              </defs>
+
+              <text x="24" y="29" font-size="13" font-weight="740" fill="#586472">cypher-parser · 文件引用网络</text>
+              <g transform="translate(245 20)">
+                <circle cx="5" cy="5" r="5" fill="#00a783" fill-opacity="0.13" stroke="#00a783" stroke-width="2"></circle>
+                <text x="17" y="9" font-size="10" fill="#687482">PageRank Top-5</text>
+                <circle cx="115" cy="5" r="5" fill="#fff" stroke="#c45555" stroke-width="2" stroke-dasharray="3 2"></circle>
+                <text x="127" y="9" font-size="10" fill="#687482">LLM Top-5</text>
+              </g>
+
+              <g fill="none" stroke-linecap="round">
+                <path d="M215 79 C215 110, 215 128, 215 151" stroke="#00a783" stroke-width="3.2" marker-end="url(#importanceArrow)"></path>
+                <path d="M344 112 C316 127, 286 145, 269 161" stroke="#00a783" stroke-width="2.5" marker-end="url(#importanceArrow)"></path>
+                <path d="M355 207 C322 204, 292 196, 275 187" stroke="#00a783" stroke-width="2.2" marker-end="url(#importanceArrow)"></path>
+                <path d="M328 310 C296 278, 266 235, 249 205" stroke="#00a783" stroke-width="2" stroke-dasharray="6 4" marker-end="url(#importanceArrow)"></path>
+                <path d="M214 323 C218 276, 218 231, 217 207" stroke="#00a783" stroke-width="1.8" stroke-dasharray="6 4" marker-end="url(#importanceArrow)"></path>
+                <path d="M87 109 C123 119, 156 140, 174 158" stroke="#cbd1d7" stroke-width="1.2" stroke-dasharray="4 4"></path>
+                <path d="M71 201 C111 193, 148 187, 171 182" stroke="#d6dbe0" stroke-width="1.1"></path>
+                <path d="M83 283 C112 274, 143 252, 176 203" stroke="#d6dbe0" stroke-width="1.1"></path>
+                <path d="M126 329 C105 313, 92 301, 80 290" stroke="#aeb6bf" stroke-width="1.2" marker-end="url(#importanceArrowGray)"></path>
+                <path d="M379 310 C379 248, 378 181, 371 129" stroke="#bfc6cd" stroke-width="1.1" stroke-dasharray="4 4" marker-end="url(#importanceArrowGray)"></path>
+                <path d="M150 66 C171 66, 190 66, 199 66" stroke="#e0e4e8" stroke-width="1"></path>
+                <path d="M273 65 C309 67, 331 78, 347 91" stroke="#e0e4e8" stroke-width="1"></path>
+              </g>
+
+              <g>
+                <rect x="163" y="48" width="104" height="34" rx="17" fill="#fff" stroke="#c45555" stroke-width="2" stroke-dasharray="5 4"></rect>
+                <text x="215" y="69" text-anchor="middle" font-size="12" font-weight="720" fill="#a84444">parser.cpp</text>
+                <text x="274" y="57" font-size="9" font-weight="720" fill="#c45555">LLM #1</text>
+
+                <rect x="159" y="153" width="116" height="58" rx="29" fill="#ffffff" stroke="#00a783" stroke-width="3" filter="url(#hubShadow)"></rect>
+                <text x="217" y="178" text-anchor="middle" font-size="14" font-weight="760" fill="#087b64">transformer.h</text>
+                <text x="217" y="195" text-anchor="middle" font-size="10" font-weight="690" fill="#00a783">16 个文件引用 · PR #1</text>
+
+                <rect x="326" y="83" width="96" height="46" rx="23" fill="#effaf7" stroke="#00a783" stroke-width="2"></rect>
+                <text x="374" y="103" text-anchor="middle" font-size="9" font-weight="720" fill="#087b64">transform_expression</text>
+                <text x="374" y="116" text-anchor="middle" font-size="9" fill="#087b64">.cpp · PR #2</text>
+
+                <rect x="337" y="187" width="78" height="39" rx="19.5" fill="#effaf7" stroke="#00a783" stroke-width="2"></rect>
+                <text x="376" y="211" text-anchor="middle" font-size="10" font-weight="720" fill="#087b64">ddl.cpp · PR #3</text>
+
+                <rect x="300" y="292" width="91" height="40" rx="20" fill="#effaf7" stroke="#00a783" stroke-width="2"></rect>
+                <text x="345" y="309" text-anchor="middle" font-size="9" font-weight="720" fill="#087b64">parsed_expression</text>
+                <text x="345" y="321" text-anchor="middle" font-size="8.5" fill="#087b64">.h · PR #4</text>
+
+                <rect x="169" y="313" width="91" height="39" rx="19.5" fill="#effaf7" stroke="#00a783" stroke-width="2"></rect>
+                <text x="214" y="330" text-anchor="middle" font-size="9" font-weight="720" fill="#087b64">transformer.cpp</text>
+                <text x="214" y="342" text-anchor="middle" font-size="8.5" fill="#087b64">PR #5</text>
+
+                <rect x="28" y="89" width="82" height="35" rx="17.5" fill="#fff" stroke="#c45555" stroke-width="2" stroke-dasharray="5 4"></rect>
+                <text x="69" y="111" text-anchor="middle" font-size="10" font-weight="720" fill="#a84444">statement.h</text>
+
+                <rect x="18" y="183" width="63" height="35" rx="17.5" fill="#fff" stroke="#c45555" stroke-width="2" stroke-dasharray="5 4"></rect>
+                <text x="49" y="205" text-anchor="middle" font-size="10" font-weight="720" fill="#a84444">copy.h</text>
+
+                <rect x="20" y="263" width="86" height="42" rx="21" fill="#fff" stroke="#c45555" stroke-width="2" stroke-dasharray="5 4"></rect>
+                <text x="63" y="280" text-anchor="middle" font-size="8.5" font-weight="720" fill="#a84444">database_statement</text>
+                <text x="63" y="293" text-anchor="middle" font-size="8.5" fill="#a84444">.h · LLM #4</text>
+
+                <rect x="92" y="321" width="88" height="39" rx="19.5" fill="#fff" stroke="#c45555" stroke-width="2" stroke-dasharray="5 4"></rect>
+                <text x="136" y="338" text-anchor="middle" font-size="9" font-weight="720" fill="#a84444">use_database.h</text>
+                <text x="136" y="350" text-anchor="middle" font-size="8.5" fill="#a84444">2 个引用 · LLM #5</text>
+
+                <circle cx="125" cy="63" r="5" fill="#dfe4e8"></circle>
+                <circle cx="394" cy="269" r="6" fill="#d8dee3"></circle>
+                <circle cx="291" cy="251" r="5" fill="#e2e6e9"></circle>
+                <circle cx="133" cy="245" r="4" fill="#e2e6e9"></circle>
+              </g>
+            </svg>
+          </section>
+
+          <section class="wiki-results-horizontal" aria-label="生成的 wiki 内容对比">
+            <article class="wiki-result-card graph-wiki">
+              <div class="wiki-result-titlebar">PageRank Top-5 → transformer.h · transform_expression.cpp · transform_ddl.cpp · parsed_expression.h · transformer.cpp</div>
+              <div class="wiki-result-body">
+                <h4>Cypher Parser</h4>
+                <p>Cypher 解析器将查询语句转换为 AST。入口类 <code>Transformer</code> 声明 80+ transform 方法，覆盖完整 Cypher 语法。</p>
+                <h4>核心流程</h4>
+                <ul>
+                  <li><code>parser.cpp</code> → ANTLR4 生成解析树</li>
+                  <li><code>Transformer::transform()</code> 遍历解析树并分发</li>
+                  <li>各 <code>transform*()</code> 将 ANTLR context 转为 AST 节点</li>
+                </ul>
+                <h4>关键组件</h4>
+                <ul>
+                  <li><b>表达式</b>：<code>transformExpression()</code> 运算符优先级链 (OR→XOR→AND→NOT→比较→算术)，返回 <code>ParsedExpression</code></li>
+                  <li><b>DDL</b>：<code>transformCreateNodeTable()</code> / <code>transformCreateRelTable()</code></li>
+                  <li><b>查询</b>：<code>transformQuery()</code> → RegularQuery → SingleQuery (MATCH/RETURN/WITH)</li>
+                  <li><b>图模式</b>：<code>transformPattern()</code> → 节点-关系-节点模式</li>
+                  <li><b>COPY</b>：<code>transformCopyFrom()</code> / <code>transformCopyTemp()</code></li>
+                </ul>
+              </div>
+              <div class="wiki-quality-footer">✓ 5 个核心子系统均有具体方法签名 · 无臆测</div>
+            </article>
+
+            <article class="wiki-result-card llm-wiki">
+              <div class="wiki-result-titlebar">LLM 启发式 Top-5 → parser.cpp · statement.h · copy.h · database_statement.h · use_database.h</div>
+              <div class="wiki-result-body">
+                <h4>Cypher Parser</h4>
+                <p>Cypher 解析器将查询语句解析为内部表示，使用 ANTLR4 作为语法分析工具。<code>parser.cpp</code> 是解析入口，接收 Cypher 文本并生成解析树。</p>
+                <h4>语句类型</h4>
+                <p>解析器支持多种语句类型（<code>statement.h</code> 定义），包括查询、DDL、数据库管理、数据导入等。</p>
+                <h4>数据库管理</h4>
+                <ul>
+                  <li><code>UseDatabase</code> — 切换当前数据库，继承 <code>DatabaseStatement</code></li>
+                  <li><code>DatabaseStatement</code> — 数据库操作基类</li>
+                </ul>
+                <h4>Copy 操作</h4>
+                <p><code>COPY FROM</code> 从文件导入数据，<code>COPY TO</code> 导出数据。</p>
+                <h4>查询与表达式</h4>
+                <p>支持 MATCH、RETURN、WITH 等查询子句和表达式运算，具体实现分布在多个 transform 源文件中。</p>
+                <p class="missing">⚠ 缺少 Transformer 类 80+ 方法分发架构、运算符优先级链、图模式解析细节</p>
+              </div>
+              <div class="wiki-quality-footer">△ 概述正确，数据库操作详尽 · 核心架构靠推断 · 读者需另查源码</div>
+            </article>
+          </section>
+        </div>
+        <div class="page-mark" aria-hidden="true">06</div>
+      </section>
+
+      <section class="slide content-slide" data-slide="7" aria-label="实验结果三：可复现性与效率">
+        <p class="slide-kicker">实验结果三：可复现性与效率</p>
+        <h2 class="slide-title">确定性图算法稳定复现，LLM 大纲随运行漂移</h2>
+        <p class="experiment-intro">同一份 NeuG 代码库（1,359 文件、71 个社区 → 23 个章节）连续生成两次大纲：图方案逐字一致，LLM 的章节数量与分组边界均发生变化。</p>
+
+        <div class="repro-layout" aria-label="图方案和 LLM 方案两次运行的可复现性对比">
+          <section class="graph-repro-result" aria-label="图方案两次运行结果一致">
+            <div class="repro-score-row">
+              <p class="repro-scheme-label">图方案 · 两次运行</p>
+              <span class="repro-score">23/23</span>
+            </div>
+            <div class="graph-run-body">
+              <span class="repro-equality">Run 1 = Run 2 · 章节标题、社区编号、成员归属与 PageRank 排序逐字一致</span>
+              <ol class="stable-chapter-list">
+                <li><span>01</span>Type System and Value Representation</li>
+                <li><span>02</span>Cypher Parser</li>
+                <li><span>03</span>Query Binder</li>
+                <li><span>04</span>Execution Engine</li>
+                <li><span>05</span>Graph Storage Engine</li>
+                <li><span>06</span>GDS Graph Algorithm Extension</li>
+                <li><span>07</span>Python Client Binding</li>
+                <li><span>...</span>...</li>
+              </ol>
+            </div>
+            <div class="repro-efficiency">
+              <span>大纲生成：秒级</span>
+              <span>API 成本低</span>
+            </div>
+          </section>
+
+          <section class="llm-runs" aria-label="LLM 两次运行结果不一致">
+            <article class="llm-run-sheet first">
+              <header class="run-sheet-header">
+                <strong>LLM · 第一次运行</strong>
+                <span>21</span>
+              </header>
+              <div class="run-differences">
+                <div class="run-difference-row">
+                  <span class="difference-label">类型系统</span>
+                  <span class="difference-value">Common Types &amp; Utilities：合并 common/ 与 utils/</span>
+                </div>
+                <div class="run-difference-row">
+                  <span class="difference-label">执行引擎</span>
+                  <span class="difference-value">拆成 Execution Operators + Columns &amp; Expressions</span>
+                </div>
+                <div class="run-difference-row">
+                  <span class="difference-label">存储</span>
+                  <span class="difference-value">Graph Storage：包含 checkpoint</span>
+                </div>
+                <div class="run-difference-row">
+                  <span class="difference-label">Pattern Matching</span>
+                  <span class="difference-value">未单独成章</span>
+                </div>
+                <div class="run-difference-row">
+                  <span class="difference-label">内置函数</span>
+                  <span class="difference-value">Built-in Functions 独立一章</span>
+                </div>
+              </div>
+              <div class="run-efficiency">分钟级 · API 成本高</div>
+            </article>
+
+            <article class="llm-run-sheet second">
+              <header class="run-sheet-header">
+                <strong>LLM · 第二次运行</strong>
+                <span>24</span>
+              </header>
+              <div class="run-differences">
+                <div class="run-difference-row">
+                  <span class="difference-label">类型系统</span>
+                  <span class="difference-value">Type System：仅含 common/types/</span>
+                </div>
+                <div class="run-difference-row">
+                  <span class="difference-label">执行引擎</span>
+                  <span class="difference-value">合并为 Execution Engine 一章</span>
+                </div>
+                <div class="run-difference-row">
+                  <span class="difference-label">存储</span>
+                  <span class="difference-value">拆成 Storage Layer + Checkpoint &amp; Recovery</span>
+                </div>
+                <div class="run-difference-row">
+                  <span class="difference-label">Pattern Matching</span>
+                  <span class="difference-value">单独列为一章</span>
+                </div>
+                <div class="run-difference-row">
+                  <span class="difference-label">内置函数</span>
+                  <span class="difference-value">并入 Type System</span>
+                </div>
+              </div>
+              <div class="run-efficiency">分钟级 · API 成本高</div>
+            </article>
+          </section>
+        </div>
+        <div class="page-mark" aria-hidden="true">07</div>
+      </section>
+
+      <section class="slide content-slide" data-slide="8" aria-label="二、维护 wiki">
+        <p class="slide-kicker">二、维护 wiki</p>
+        <h2 class="slide-title">让 LLM 判断增量影响，更新范围依然不可控</h2>
+        <p class="build-question">当源文件持续新增、修改和删除，直接让 LLM 阅读 <strong>git diff</strong> 并更新 wiki，会遇到哪些问题？</p>
+
+        <div class="maintenance-grid" aria-label="维护 wiki 的痛点与 NeuG 解决方案对照">
+          <div class="maintenance-column">
+            <article class="build-card maintenance-card problem">
+              <p class="build-card-label">痛点 01</p>
+              <h3 class="build-card-title">影响范围不精确</h3>
+              <p class="build-card-copy">可能漏掉间接影响，也会把无关的小改动误判为需要更新</p>
+            </article>
+            <div class="build-flow-arrow" aria-hidden="true">↓</div>
+            <article class="build-card maintenance-card solution">
+              <p class="build-card-label">NeuG 方案</p>
+              <h3 class="build-card-title">精确计算变更社区</h3>
+              <p class="build-card-copy">Cypher group by 识别 stable、changed、new 与 dissolved</p>
+            </article>
+          </div>
+
+          <div class="maintenance-column">
+            <article class="build-card maintenance-card problem">
+              <p class="build-card-label">痛点 02</p>
+              <h3 class="build-card-title">概念编号漂移</h3>
+              <p class="build-card-copy">重新归组后旧章节编号变化，可能触发大量无意义重写</p>
+            </article>
+            <div class="build-flow-arrow" aria-hidden="true">↓</div>
+            <article class="build-card maintenance-card solution">
+              <p class="build-card-label">NeuG 方案</p>
+              <h3 class="build-card-title">freeze-assign 保持稳定</h3>
+              <p class="build-card-copy">冻结旧节点与概念组，只为新增节点分配社区</p>
+            </article>
+          </div>
+
+          <div class="maintenance-column">
+            <article class="build-card maintenance-card problem">
+              <p class="build-card-label">痛点 03</p>
+              <h3 class="build-card-title">文件选择不准确</h3>
+              <p class="build-card-copy">继续依赖文件名启发式，容易遗漏真正受影响的核心文件</p>
+            </article>
+            <div class="build-flow-arrow" aria-hidden="true">↓</div>
+            <article class="build-card maintenance-card solution">
+              <p class="build-card-label">NeuG 方案</p>
+              <h3 class="build-card-title">按社区重跑 PageRank</h3>
+              <p class="build-card-copy">只对受影响社区排序，定位最重要的更新依据</p>
+            </article>
+          </div>
+
+          <div class="maintenance-column">
+            <article class="build-card maintenance-card problem">
+              <p class="build-card-label">痛点 04</p>
+              <h3 class="build-card-title">结果不可复现</h3>
+              <p class="build-card-copy">每次推断的影响范围和文件选择都可能发生变化</p>
+            </article>
+            <div class="build-flow-arrow" aria-hidden="true">↓</div>
+            <article class="build-card maintenance-card solution">
+              <p class="build-card-label">NeuG 方案</p>
+              <h3 class="build-card-title">确定性增量更新</h3>
+              <p class="build-card-copy">相同的图变更得到相同的增量结果与文件排序</p>
+            </article>
+          </div>
+        </div>
+        <div class="page-mark" aria-hidden="true">08</div>
+      </section>
+
+      <section class="slide content-slide" data-slide="9" aria-label="实验：图增量 vs LLM 增量扫描">
+        <p class="slide-kicker">实验：图增量 vs LLM 增量扫描</p>
+        <h2 class="slide-title">增量更新：freeze-assign vs LLM 全量扫描</h2>
+        <p class="experiment-intro">47 文件变更后，图方案冻结旧章节 + 归类新文件，LLM 方案读全部 diff + 对比全部章节。</p>
+
+        <div class="incremental-layout" aria-label="Wiki 基线、图增量方案和 LLM 增量扫描对比">
+          <section class="wiki-snapshot-card" aria-label="Wiki 与代码变更信息">
+            <header class="snapshot-header">
+              <strong>已有 Wiki + 新增文件</strong>
+              <span>实验输入</span>
+            </header>
+            <div class="draft-snapshot-body">
+              <div class="existing-wiki-section">
+                <p class="snapshot-section-title">已有 Wiki（23 章节）</p>
+                <ol style="display: grid; grid-template-columns: 1fr; row-gap: 3px; margin: 0; padding: 0; list-style: none; font-size: 11px; color: #4f5b68; line-height: 1.3;">
+                  <li>01 Type System and Value Representation</li>
+                  <li>02 Cypher Parser</li>
+                  <li>03 Query Binder</li>
+                  <li>04 Execution Engine</li>
+                  <li>05 Graph Storage Engine</li>
+                  <li>06 GDS Graph Algorithm Extension</li>
+                  <li>...</li>
+                </ol>
+              </div>
+              <div class="changed-files-section">
+                <p class="snapshot-section-title">新增文件（git diff，35 个）</p>
+                <ul style="display: grid; gap: 3px; margin: 0; padding: 0; list-style: none; font-size: 11px; color: #56616e; line-height: 1.3; font-family: 'SFMono-Regular', Consolas, monospace;">
+                  <li>pattern_matching_functions.h</li>
+                  <li>pattern_matching_data_graph_meta.h</li>
+                  <li>pattern_matching_data_graph_meta.cpp</li>
+                  <li>graph_interface.h (+1行 #include)</li>
+                  <li style="color: #8a929b; font-family: inherit; font-style: italic;">... 等 35 个变更文件</li>
+                </ul>
+              </div>
+            </div>
+            <footer class="snapshot-footer">输入：已有 Wiki（23 章节）+ 新增文件（git diff，35 个）</footer>
+          </section>
+
+          <section class="incremental-comparison-stack" aria-label="图方案和 LLM 方案对比">
+            <article class="incremental-card graph-incremental">
+              <header class="incremental-header">
+                <strong>图方案（freeze-assign Leiden）</strong>
+                <span>freeze-assign：旧章节冻结不动，新文件自动归类</span>
+              </header>
+              <div class="draft-graph-content">
+                <div class="frozen-strip">✓ 21 个章节冻结 — wiki 无需任何修改</div>
+                <div class="graph-change-grid">
+                  <div class="graph-change-item">
+                    <strong>⚡ 01 Type System and Value Representation +2 成员</strong>
+                    <span>新增文件: type_node.h, type_cast.h</span>
+                    <em>wiki 更新 → §类型系统：新增 TypeNode 类型定义（枚举值 + 校验逻辑）</em>
+                  </div>
+                  <div class="graph-change-item new-chapter">
+                    <strong>+06 GDS Graph Algorithm Extension</strong>
+                    <span>3 文件: pm_functions.h, pm_data_graph_meta.h/cpp</span>
+                    <em>wiki 新建：DataGraphMeta 数据结构 + PatternFunction API</em>
+                  </div>
+                </div>
+                <div class="graph-stability-note">旧章节编号不变 → wiki 章节稳定，仅增量补充</div>
+              </div>
+              <footer class="incremental-footer">→ 21 个章节直接复用，仅 2 个需更新（97.3%）</footer>
+            </article>
+
+            <article class="incremental-card llm-incremental">
+              <header class="incremental-header">
+                <strong>LLM 方案（全量对比）</strong>
+                <span>读全部 35 个 diff → 逐个对比全部 23 个章节 → 判断分到哪里 / 是否新章节</span>
+              </header>
+              <div class="draft-llm-content">
+                <div class="llm-issue-grid">
+                  <div class="llm-issue-item">
+                    <strong>✗ §类型系统 — 误报</strong>
+                    <span>graph_interface.h 仅 +1 行 #include</span>
+                    <em>→ 误标为“类型定义变更”，实际无影响</em>
+                  </div>
+                  <div class="llm-issue-item">
+                    <strong>✗ §存储引擎 — 误报</strong>
+                    <span>pm_data_graph_meta.cpp 变更</span>
+                    <em>→ 误判为存储层改动，实际是 GDS 数据</em>
+                  </div>
+                  <div class="llm-issue-item">
+                    <strong>✗ §GDS算法扩展 — 文件选错</strong>
+                    <span>选中 extension.cpp（90 行注册代码）</span>
+                    <em>→ 遗漏 data_graph_meta.h（304 行核心数据结构）</em>
+                  </div>
+                  <div class="llm-issue-item">
+                    <strong>✗ 重跑结果不一致</strong>
+                    <span>第一次：标记 4 个章节需更新</span>
+                    <em>→ 第二次：标记 3 个章节，且归属不同</em>
+                  </div>
+                </div>
+              </div>
+              <footer class="incremental-footer">→ 可能更新 4 个章节（2 误报 + 1 文件选错 + 结果不稳定）</footer>
+            </article>
+          </section>
+        </div>
+        <div class="page-mark" aria-hidden="true">09</div>
+      </section>
+
+      <section class="slide content-slide" data-slide="10" aria-label="三、检索 wiki">
+        <p class="slide-kicker">三、检索 wiki</p>
+        <h2 class="slide-title">传统检索能找到文本，却回答不了代码结构</h2>
+        <p class="build-question">当开发者询问“Leiden 在哪里实现、哪些模块依赖 GDS 扩展”，传统搜索为什么仍需要多轮拼接？</p>
+
+        <div class="build-grid" aria-label="检索 wiki 的痛点与 NeuG 解决方案对照">
+          <div class="build-column">
+            <article class="build-card problem">
+              <p class="build-card-label">痛点 01</p>
+              <h3 class="build-card-title">grep 只能匹配文本关键词</h3>
+              <p class="build-card-copy">精确匹配字符串，但搜不到语义相关的代码</p>
+            </article>
+            <div class="build-flow-arrow" aria-hidden="true">↓</div>
+            <article class="build-card solution">
+              <p class="build-card-label">NeuG 方案</p>
+              <h3 class="build-card-title">全文索引 + 向量索引</h3>
+              <p class="build-card-copy">全文索引快速匹配符号，向量索引支持语义相似检索</p>
+            </article>
+          </div>
+
+          <div class="build-column">
+            <article class="build-card problem">
+              <p class="build-card-label">痛点 02</p>
+              <h3 class="build-card-title">无法查询结构关系</h3>
+              <p class="build-card-copy">“谁调用 Leiden？”“GDS 依赖了哪些模块？“grep 和向量 DB 都回答不了</p>
+            </article>
+            <div class="build-flow-arrow" aria-hidden="true">↓</div>
+            <article class="build-card solution">
+              <p class="build-card-label">NeuG 方案</p>
+              <h3 class="build-card-title">Cypher 图查询</h3>
+              <p class="build-card-copy">直接返回调用路径、依赖关系和影响范围</p>
+            </article>
+          </div>
+
+          <div class="build-column">
+            <article class="build-card problem">
+              <p class="build-card-label">痛点 03</p>
+              <h3 class="build-card-title">多轮搜索效率低</h3>
+              <p class="build-card-copy">AI 助手平均需要 4.8 次 grep 与文件读取才能拼出答案</p>
+            </article>
+            <div class="build-flow-arrow" aria-hidden="true">↓</div>
+            <article class="build-card solution">
+              <p class="build-card-label">NeuG 方案</p>
+              <h3 class="build-card-title">单次查询返回完整上下文</h3>
+              <p class="build-card-copy">1 次 context_query 返回符号定位、调用路径与依赖关系</p>
+            </article>
+          </div>
+        </div>
+        <div class="page-mark" aria-hidden="true">10</div>
+      </section>
+
+      <section class="slide content-slide" data-slide="11" aria-label="检索实验：三类查询的端到端对比">
+        <p class="slide-kicker">检索实验：三类查询的端到端对比</p>
+        <h2 class="slide-title">一次图查询返回完整上下文，传统搜索需要多轮拼接</h2>
+        <p class="experiment-intro">在 NeuG 代码库上使用 GPT-5.6 完成 100 个查询 case；以下三个代表性 use case 覆盖全文、向量和结构查询。</p>
+
+        <div class="retrieval-experiment-grid" aria-label="全文、向量和结构查询的 with NeuG 与 without NeuG 对比">
+          <article class="usecase-card fulltext-case">
+            <header class="usecase-header">
+              <div class="usecase-title">
+                <strong>全文检索</strong>
+                <span>精确符号定位</span>
+              </div>
+              <span class="usecase-index">01</span>
+            </header>
+            <div class="usecase-body">
+              <p class="usecase-query">“Leiden::local_moving_phase 在哪实现？”</p>
+              <div class="usecase-comparison">
+                <div class="comparison-row with-neug">
+                  <strong>with NeuG</strong>
+                  <span class="metric-line"><span class="metric-number">1</span> 次调用 · <span class="metric-number">94.9</span>s · <span class="metric-number">41.6k</span> tokens</span>
+                </div>
+                <div class="comparison-row without">
+                  <strong>without NeuG</strong>
+                  <span class="metric-line"><span class="metric-number">4</span> 次调用 · <span class="metric-number">168.2</span>s · <span class="metric-number">172.5k</span> tokens</span>
+                </div>
+              </div>
+              <p class="usecase-result"><strong>返回结果：</strong>精确定位 <code>leiden_impl.cc:157</code>，并返回入口、主流程、refinement、sink 等 9 个相关符号。</p>
+            </div>
+            <footer class="usecase-footer">1 次查询完成符号定位与完整拓扑返回</footer>
+          </article>
+
+          <article class="usecase-card vector-case">
+            <header class="usecase-header">
+              <div class="usecase-title">
+                <strong>向量检索</strong>
+                <span>语义实现发现</span>
+              </div>
+              <span class="usecase-index">02</span>
+            </header>
+            <div class="usecase-body">
+              <p class="usecase-query">“哪些代码实现了社区发现？”</p>
+              <div class="usecase-comparison">
+                <div class="comparison-row with-neug">
+                  <strong>with NeuG</strong>
+                  <span class="metric-line"><span class="metric-number">1</span> 次调用 · <span class="metric-number">79.7</span>s · <span class="metric-number">41.5k</span> tokens</span>
+                </div>
+                <div class="comparison-row without">
+                  <strong>without NeuG</strong>
+                  <span class="metric-line"><span class="metric-number">5</span> 次调用 · <span class="metric-number">169.7</span>s · <span class="metric-number">223.9k</span> tokens</span>
+                </div>
+              </div>
+              <p class="usecase-result"><strong>返回结果：</strong>定位 Leiden 和 Louvain 两个算法，包含核心实现、结果结构和查询集成入口。</p>
+            </div>
+            <footer class="usecase-footer">不依赖关键词，也能发现两套社区算法实现</footer>
+          </article>
+
+          <article class="usecase-card structure-case">
+            <header class="usecase-header">
+              <div class="usecase-title">
+                <strong>结构查询</strong>
+                <span>跨模块依赖分析</span>
+              </div>
+              <span class="usecase-index">03</span>
+            </header>
+            <div class="usecase-body">
+              <p class="usecase-query">“GDS模块依赖哪些其他模块？”</p>
+              <div class="usecase-comparison">
+                <div class="comparison-row with-neug">
+                  <strong>with NeuG</strong>
+                  <span class="metric-line"><span class="metric-number">1</span> 次调用 · <span class="metric-number">59.1</span>s · <span class="metric-number">41.2k</span> tokens</span>
+                </div>
+                <div class="comparison-row without">
+                  <strong>without NeuG</strong>
+                  <span class="metric-line"><span class="metric-number">5</span> 次调用 · <span class="metric-number">186.9</span>s · <span class="metric-number">207.5k</span> tokens</span>
+                </div>
+              </div>
+              <p class="usecase-result"><strong>返回结果：</strong>直接返回 4 个子模块，以及具体函数调用和源文件路径。</p>
+            </div>
+            <footer class="usecase-footer">grep 与向量 DB 无法直接回答结构依赖</footer>
+          </article>
+        </div>
+        <div class="page-mark" aria-hidden="true">11</div>
+      </section>
+
+      <section class="slide content-slide" data-slide="12" aria-label="聚合性能对比与整体功能对比">
+        <p class="slide-kicker">检索实验总结</p>
+        <h2 class="slide-title">图检索降低多轮搜索成本，并补齐结构查询能力</h2>
+        <p class="experiment-intro">100个查询 case 的聚合数据表明：NeuG 不只减少调用、延迟和 token，更提供 grep 与向量 DB 无法完成的结构查询。</p>
+
+        <div class="retrieval-summary-layout">
+          <section class="performance-panel" aria-label="聚合性能对比">
+            <header class="summary-section-header">
+              <strong>聚合性能对比</strong>
+              <span>with NeuG vs without NeuG · 100 个查询 case</span>
+            </header>
+            <div class="performance-grid">
+              <div class="performance-metric">
+                <div>
+                  <span class="performance-name">平均工具调用数</span>
+                  <span class="performance-values"><b>1.0</b> vs 4.8</span>
+                </div>
+                <span class="performance-reduction">79.3%<small>降幅</small></span>
+              </div>
+              <div class="performance-metric">
+                <div>
+                  <span class="performance-name">平均延迟</span>
+                  <span class="performance-values"><b>74.1s</b> vs 176.2s</span>
+                </div>
+                <span class="performance-reduction">58.0%<small>降幅</small></span>
+              </div>
+              <div class="performance-metric">
+                <div>
+                  <span class="performance-name">平均 token</span>
+                  <span class="performance-values"><b>46,196</b> vs 207,485</span>
+                </div>
+                <span class="performance-reduction">77.7%<small>降幅</small></span>
+              </div>
+              <div class="performance-metric">
+                <div>
+                  <span class="performance-name">平均成本</span>
+                  <span class="performance-values"><b>$0.065</b> vs $0.340</span>
+                </div>
+                <span class="performance-reduction">81.0%<small>降幅</small></span>
+              </div>
+            </div>
+            <footer class="summary-section-footer">with NeuG 在全部 6 个 case 中均只调用 1 次 context_query，没有执行额外搜索</footer>
+          </section>
+
+          <section class="function-panel" aria-label="整体功能对比">
+            <header class="summary-section-header">
+              <strong>整体功能对比</strong>
+              <span>grep / 文件搜索 · 向量 DB · NeuG 图检索</span>
+            </header>
+            <table class="function-table">
+              <colgroup><col /><col /><col /><col /><col /><col /></colgroup>
+              <thead>
+                <tr><th>方案</th><th>关键词搜索</th><th>结构查询</th><th>工具调用数</th><th>信息深度</th><th>token 成本</th></tr>
+              </thead>
+              <tbody>
+                <tr><td>grep / 文件搜索</td><td>✓ 搜文本</td><td>✗</td><td>4.8 次平均</td><td>只能搜到文本内容</td><td>高（多轮搜索）</td></tr>
+                <tr><td>向量 DB</td><td>✓ 搜语义</td><td>✗</td><td>同上</td><td>可以搜到语义相关内容</td><td>同上</td></tr>
+                <tr><td>NeuG 图检索</td><td>全文索引 + 向量索引</td><td>Cypher 路径、依赖、影响分析</td><td>1 次</td><td>图结构信息（调用路径、依赖关系、枢纽节点）</td><td>低（单次查询返回完整结果）</td></tr>
+              </tbody>
+            </table>
+            <footer class="summary-section-footer">关键区别：图检索不只是搜文本，而是查结构</footer>
+          </section>
+        </div>
+        <div class="page-mark" aria-hidden="true">12</div>
+      </section>
+
+      <section class="slide content-slide" data-slide="13" aria-label="额外能力：远程数据与端云能力">
+        <p class="slide-kicker">额外能力</p>
+        <h2 class="slide-title">远程数据直连，并覆盖端侧到云端的运行形态</h2>
+        <p class="experiment-intro">除 wiki 的构建、维护与检索外，NeuG 还支持远程数据读写，以及 AP/TP 访问、嵌入式和服务器部署方式。</p>
+
+        <div class="extra-capabilities-layout">
+          <section class="capability-block remote-data" aria-label="远程数据能力">
+            <header class="capability-header">
+              <strong>远程数据能力</strong>
+              <span>COPY FROM / EXPORT TO · OSS / S3</span>
+            </header>
+            <div class="remote-capability-body">
+              <div class="remote-description">
+                <strong>对象存储可直接作为数据入口与出口</strong>
+                <p>通过统一 SQL 从 OSS/S3 导入节点与关系，或将查询和 wiki 结果直接导出到远程存储。</p>
+              </div>
+              <div class="sql-examples">
+                <div class="sql-example">
+                  <span>从 OSS / S3 导入</span>
+                  <code>COPY node FROM 's3://bucket/nodes.csv'<br />(header=true, delim=',');</code>
+                </div>
+                <div class="sql-example">
+                  <span>导出查询结果</span>
+                  <code>EXPORT 's3://bucket/wiki_result.csv'<br />FROM ...;</code>
+                </div>
+              </div>
+            </div>
+            <footer class="capability-footer">数据导入导出无需本地 staging，减少中间搬运步骤</footer>
+          </section>
+
+          <section class="capability-block edge-cloud" aria-label="端云能力">
+            <header class="capability-header">
+              <strong>端云能力</strong>
+              <span>AP + TP 访问 · Embedded + Server 部署</span>
+            </header>
+            <div class="edge-cloud-body">
+              <div class="capability-axis">
+                <span class="axis-title">访问模式</span>
+                <div class="axis-options">
+                  <div class="axis-option">
+                    <strong>AP 访问</strong>
+                    <p>面向图分析、批量计算和复杂关系查询。</p>
+                  </div>
+                  <div class="axis-option">
+                    <strong>TP 访问</strong>
+                    <p>面向在线读写、持续更新和事务型访问。</p>
+                  </div>
+                </div>
+              </div>
+              <div class="capability-axis">
+                <span class="axis-title">运行形态</span>
+                <div class="axis-options">
+                  <div class="axis-option">
+                    <strong>嵌入式执行</strong>
+                    <p>随应用进程运行，适合本地和端侧集成。</p>
+                  </div>
+                  <div class="axis-option">
+                    <strong>服务器部署</strong>
+                    <p>作为独立服务运行，支持共享访问与集中管理。</p>
+                  </div>
+                </div>
+              </div>
+            </div>
+            <footer class="capability-footer">同一引擎覆盖端侧、服务端与云端，按业务场景组合访问和部署方式</footer>
+          </section>
+        </div>
+        <div class="page-mark" aria-hidden="true">13</div>
+      </section>
+
+      <section class="slide content-slide" data-slide="14" aria-label="总结：图与大模型各司其职">
+        <p class="slide-kicker">总结</p>
+        <h2 class="slide-title">NeuG 与大模型，不是替代，而是各司其职</h2>
+        <p class="build-question">图数据库负责结构化、确定性的部分；大模型负责语义理解与内容生成。</p>
+
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 60px; margin-top: 50px;">
+          <div style="border-left: 6px solid var(--accent); padding: 22px 28px; background: rgba(0, 167, 131, 0.05);">
+            <p style="font-size: 28px; font-weight: 720; color: var(--ink); margin: 0 0 14px;">NeuG 图数据库</p>
+            <p style="font-size: 20px; color: #4d5866; line-height: 1.55; margin: 0;">结构化、确定性的部分<br />· 概念发现（Leiden 聚类）<br />· 变更检测（freeze-assign）<br />· 结构查询（Cypher）<br />· 文件选择（PageRank）</p>
+          </div>
+          <div style="border-left: 6px solid #758191; padding: 22px 28px; background: rgba(117, 129, 145, 0.05);">
+            <p style="font-size: 28px; font-weight: 720; color: var(--ink); margin: 0 0 14px;">大模型（LLM）</p>
+            <p style="font-size: 20px; color: #4d5866; line-height: 1.55; margin: 0;">语义理解与内容生成<br />· wiki 章节内容撰写<br />· 自然语言交互与问答<br />· 代码摘要与解释</p>
+          </div>
+        </div>
+
+        <p style="position: absolute; bottom: 80px; left: 88px; right: 88px; text-align: center; font-size: 22px; color: var(--muted);">图提供结构骨架，大模型填充语义血肉 —— 二者结合，才能构建、维护和检索高质量的知识库。</p>
+        <div class="page-mark" aria-hidden="true">14</div>
+      </section>
     </div>
-    <div style="flex: 1;">
-      <pre style="font-size: 0.5em; margin: 0;"><code>-- freeze-assign Leiden
-CALL leiden('g', {concurrency: 1,
-  initial_community_property: 'delta_comm'})
-YIELD node, community,
-     previous_community
-RETURN node.id,
-       community,
-       previous_community
-ORDER BY node.id;</code></pre>
-      <p class="dim small" style="margin-top: 0.5em;">旧节点: previous_community 有值（冻结）<br>新节点: previous_community = NULL</p>
-    </div>
-  </div>
-</section>
 
-<!-- 13. neug 2: Cypher -->
-<section>
-  <span class="section-number">05 / 解法</span>
-  <h3>2. Cypher 驱动的变更检测</h3>
-  <div style="display: flex; gap: 2em; align-items: flex-start;">
-    <div style="flex: 1;">
-      <ul>
-        <li>增量归组后，用 Cypher 查询语言对图做分析</li>
-        <li>写 <code>group by</code> 语句，按社区聚合计算变更统计</li>
-        <li>统计每个概念组的新增成员数、旧成员存活数</li>
-        <li>据此判定：<span class="tag tag-green">stable</span> <span class="tag tag-blue">changed</span> <span class="tag tag-warn">new</span> <span class="tag tag-warn">dissolved</span></li>
-      </ul>
-    </div>
-    <div style="flex: 1;">
-      <pre style="font-size: 0.45em; margin: 0;"><code>-- group by 社区，计算变更统计
-MATCH (n)
-WITH n.community AS community,
-     count(*) AS total,
-     count(n.previous_community)
-       AS old_members
-RETURN community, total,
-       old_members,
-       total - old_members AS new_members,
-  CASE
-    WHEN old_members = 0 THEN 'new'
-    WHEN old_members = total
-     THEN 'stable'
-    ELSE 'growth'
-  END AS change_type
-ORDER BY change_type, community;</code></pre>
-    </div>
-  </div>
-</section>
+    <nav class="deck-controls" aria-label="翻页控制">
+      <button class="nav-button" id="previousSlide" type="button" aria-label="上一页">&#8592;</button>
+      <span class="slide-position" id="slidePosition" aria-live="polite">1 / 14</span>
+      <button class="nav-button" id="nextSlide" type="button" aria-label="下一页">&#8594;</button>
+    </nav>
+  </main>
 
-<!-- 14. neug 3: COPY TEMP -->
-<section>
-  <span class="section-number">05 / 解法</span>
-  <h3>3. 临时图计算（COPY TEMP）</h3>
-  <div style="display: flex; gap: 2em; align-items: flex-start;">
-    <div style="flex: 1;">
-      <ul>
-        <li><code>COPY TEMP FROM</code> 导入临时边，不修改持久图数据</li>
-        <li>增量归组时构建临时聚合视图（如符号级→文件级）</li>
-        <li>用完即弃，<span class="green">原图保持不变</span></li>
-      </ul>
-      <p style="margin-top: 0.8em;">增量计算不会对已有图产生副作用——每次分析都在<span class="green">隔离的临时结构</span>上完成。</p>
-    </div>
-    <div style="flex: 1;">
-      <pre style="font-size: 0.5em; margin: 0;"><code>-- 1. 导入临时节点和边
-COPY TEMP TempNode
-  FROM 'nodes.csv'
-  (header=true, delim=',');
-COPY TEMP TempEdge
-  FROM 'edges.csv'
-  (header=true, delim=',',
-   from='TempNode', to='TempNode');
+  <script>
+    const deck = document.getElementById("deck");
+    const slides = [...document.querySelectorAll(".slide")];
+    const previousButton = document.getElementById("previousSlide");
+    const nextButton = document.getElementById("nextSlide");
+    const slidePosition = document.getElementById("slidePosition");
+    let current = 0;
 
--- 2. 在临时图上跑聚类
-CALL project_graph('g2',
-  ['TempNode'],
-  {'[TempNode, TempEdge,
-    TempNode]': ''});
-CALL leiden('g2',
-  {concurrency: 4});
+    function fitDeck() {
+      const scale = Math.min(window.innerWidth / 1280, window.innerHeight / 720);
+      deck.style.transform = `scale(${scale})`;
+    }
 
--- 3. 用完即弃，原图不变
-CALL drop_projected_graph('g2');</code></pre>
-    </div>
-  </div>
-</section>
+    function showSlide(index) {
+      current = Math.max(0, Math.min(index, slides.length - 1));
+      slides.forEach((slide, i) => slide.classList.toggle("is-active", i === current));
+      previousButton.disabled = current === 0;
+      nextButton.disabled = current === slides.length - 1;
+      slidePosition.textContent = `${current + 1} / ${slides.length}`;
+      document.title = `${current + 1}/${slides.length} · NeuG 图数据库`;
+    }
 
-<!-- 14.5. Example: neug -->
-<section>
-  <span class="section-number">05 / 示例</span>
-  <h3 class="green">示例：neug 增量聚类 + Cypher</h3>
-  <table style="font-size: 0.65em;">
-    <tr><th>变更类型</th><th>数量</th><th>wiki 动作</th><th>需要 LLM？</th></tr>
-    <tr><td class="green">stable</td><td>2,413 (98.9%)</td><td>直接复用</td><td class="dim">否</td></tr>
-    <tr><td class="accent">changed</td><td>21</td><td>更新文章</td><td>是</td></tr>
-    <tr><td class="accent">new</td><td>119</td><td>生成新文章</td><td>是</td></tr>
-    <tr><td class="warn">dissolved</td><td>4</td><td>归档</td><td class="dim">否</td></tr>
-  </table>
-  <p style="margin-top: 0.8em;">只有 <span class="green">144 个概念组</span>（21+119+4）需要处理，其余 2,413 个直接复用。</p>
-  <p class="dim small">例：comm 0 "pattern_matching_functions" 新增 72 个成员；comm 1322 "PropertyGraph" 流失 25 个成员。</p>
-</section>
+    previousButton.addEventListener("click", () => showSlide(current - 1));
+    nextButton.addEventListener("click", () => showSlide(current + 1));
+    window.addEventListener("resize", fitDeck);
+    window.addEventListener("keydown", (event) => {
+      if (["ArrowRight", "PageDown", " "].includes(event.key)) showSlide(current + 1);
+      if (["ArrowLeft", "PageUp"].includes(event.key)) showSlide(current - 1);
+      if (event.key === "Home") showSlide(0);
+      if (event.key === "End") showSlide(slides.length - 1);
+    });
 
-<!-- 14.6. E2E: flow -->
-<section>
-  <span class="section-number">05 / 示例</span>
-  <h2>端到端流程</h2>
-  <div style="display: flex; gap: 2em; align-items: flex-start;">
-    <div style="flex: 1;">
-      <p class="accent"><b>初次构建（全量）</b></p>
-      <pre style="font-size: 0.45em; margin: 0;"><code>原始内容
-  ↓
-neug 全量 Leiden 聚类
-  ↓
-2,553 个概念组
-  ↓
-LLM 理解 + 命名
-  ↓
-生成完整 wiki</code></pre>
-    </div>
-    <div style="flex: 1;">
-      <p class="green"><b>增量更新</b></p>
-      <pre style="font-size: 0.45em; margin: 0;"><code>增量内容（47 文件）
-  ↓
-neug freeze-assign + Cypher
-  ↓
-21 changed / 119 new / 4 dissolved
-  ↓
-LLM 只处理 144 个变化的概念组
-  ↓
-更新 wiki 的变化部分</code></pre>
-    </div>
-  </div>
-  <p class="dim small" style="margin-top: 1em;">代码 Repo 是 POC 的一个场景。任何"有结构、会变化的内容源"都适用。</p>
-</section>
-
-<!-- 16. Summary table -->
-<section>
-  <span class="section-number">06 / 总结</span>
-  <h2>定位总结</h2>
-  <table>
-    <thead>
-      <tr><th></th><th>LLM-wiki</th><th>+ 图</th><th>+ neug 增量</th></tr>
-    </thead>
-    <tbody>
-      <tr><td class="accent">概念边界</td><td>LLM 判断</td><td>图算法确定</td><td class="green">算法 + 增量稳定</td></tr>
-      <tr><td class="accent">变更检测</td><td>LLM 读增量文本判断</td><td>全量重建</td><td class="green">Cypher 精确计算</td></tr>
-      <tr><td class="accent">更新成本</td><td>每次 ingest 扫描</td><td>O(K) 全量</td><td class="green">O(ΔK) 只处理变化</td></tr>
-      <tr><td class="accent">概念稳定性</td><td>可能漂移</td><td>编号变导致漂移</td><td class="green">freeze-assign 不变</td></tr>
-      <tr><td class="accent">计算安全性</td><td>—</td><td>—</td><td class="green">临时图隔离</td></tr>
-    </tbody>
-  </table>
-</section>
-
-<!-- 17. Closing -->
-<section>
-  <h2>不是替代，而是各司其职</h2>
-  <div style="display: flex; gap: 3em; margin-top: 1.5em;">
-    <div style="flex: 1; text-align: left;">
-      <h3 class="accent">图：结构化部分</h3>
-      <ul>
-        <li>图算法确定<span class="accent">概念边界</span></li>
-        <li>Cypher查询<span class="accent">灵活的查询逻辑</span></li>
-      </ul>
-    </div>
-    <div style="flex: 1; text-align: left;">
-      <h3 class="green">大模型：语义部分</h3>
-      <ul>
-        <li>理解概念组，生成<span class="green"> wiki 文章</span></li>
-        <li>负责<span class="green">表达</span>，不负责决定结构</li>
-      </ul>
-    </div>
-  </div>
-  <p class="dim small" style="margin-top: 2em;">graphify · neug · wiki</p>
-</section>
-
-</div></div>
-<script src="https://cdn.jsdelivr.net/npm/reveal.js@5.1.0/dist/reveal.js"></script>
-<script>
-  Reveal.initialize({
-    hash: true,
-    slideNumber: 'c/t',
-    transition: 'slide',
-    transitionSpeed: 'fast',
-    controls: true,
-    progress: true,
-    width: 1280,
-    height: 720,
-    margin: 0.08
-  });
-</script>
+    fitDeck();
+    showSlide(0);
+  </script>
 </body>
 </html>
